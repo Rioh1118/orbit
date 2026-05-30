@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useCreateTask } from "./hooks";
+import { TASK_CATEGORIES, type TaskCategory } from "./types";
 
 export function TaskForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<TaskCategory>("learning");
   const create = useCreateTask();
 
   return (
@@ -14,6 +16,7 @@ export function TaskForm() {
         await create.mutateAsync({
           title: title.trim(),
           description: description.trim() || undefined,
+          category,
         });
         setTitle("");
         setDescription("");
@@ -38,6 +41,23 @@ export function TaskForm() {
         className="w-full rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
         aria-label="説明"
       />
+      <div className="flex items-center gap-2">
+        <label htmlFor="task-category" className="text-xs text-neutral-400">
+          カテゴリ
+        </label>
+        <select
+          id="task-category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value as TaskCategory)}
+          className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm"
+        >
+          {TASK_CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <button
         type="submit"
         disabled={create.isPending || !title.trim()}

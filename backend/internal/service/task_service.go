@@ -19,10 +19,11 @@ func NewTaskService(r *repo.TaskRepo) *TaskService {
 }
 
 type ListInput struct {
-	UserID uuid.UUID
-	Status *task.Status
-	Limit  int
-	Offset int
+	UserID   uuid.UUID
+	Status   *task.Status
+	Category *task.Category
+	Limit    int
+	Offset   int
 }
 
 func (s *TaskService) List(ctx context.Context, in ListInput) ([]*task.Task, int64, error) {
@@ -34,10 +35,11 @@ func (s *TaskService) List(ctx context.Context, in ListInput) ([]*task.Task, int
 		limit = 200
 	}
 	return s.repo.List(ctx, repo.ListTasksParams{
-		UserID: in.UserID,
-		Status: in.Status,
-		Limit:  int32(limit),
-		Offset: int32(in.Offset),
+		UserID:   in.UserID,
+		Status:   in.Status,
+		Category: in.Category,
+		Limit:    int32(limit),
+		Offset:   int32(in.Offset),
 	})
 }
 
@@ -49,6 +51,7 @@ type CreateInput struct {
 	UserID      uuid.UUID
 	Title       string
 	Description string
+	Category    task.Category
 	Status      task.Status
 	ExternalRef string
 }
@@ -67,6 +70,7 @@ func (s *TaskService) Create(ctx context.Context, in CreateInput) (*task.Task, e
 		UserID:      in.UserID,
 		Title:       in.Title,
 		Description: in.Description,
+		Category:    in.Category,
 		Status:      status,
 		ExternalRef: in.ExternalRef,
 	}
@@ -81,6 +85,7 @@ type UpdateInput struct {
 	UserID      uuid.UUID
 	Title       *string
 	Description *string
+	Category    *task.Category
 	Status      *task.Status
 	ExternalRef *string
 }
@@ -98,6 +103,12 @@ func (s *TaskService) Update(ctx context.Context, in UpdateInput) (*task.Task, e
 	}
 	if in.ExternalRef != nil {
 		existing.ExternalRef = *in.ExternalRef
+	}
+	if in.Category != nil {
+		if !in.Category.Valid() {
+			return nil, task.ErrInvalidCategory
+		}
+		existing.Category = *in.Category
 	}
 	if in.Status != nil {
 		if !in.Status.Valid() {

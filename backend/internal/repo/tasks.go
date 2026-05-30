@@ -23,14 +23,37 @@ func NewTaskRepo(pool *pgxpool.Pool) *TaskRepo {
 }
 
 type ListTasksParams struct {
-	UserID uuid.UUID
-	Status *task.Status
-	Limit  int32
-	Offset int32
+	UserID   uuid.UUID
+	Status   *task.Status
+	Category *task.Category
+	Limit    int32
+	Offset   int32
 }
 
 func (r *TaskRepo) List(ctx context.Context, p ListTasksParams) ([]*task.Task, int64, error) {
-	if p.Status != nil {
+	switch {
+	case p.Status != nil && p.Category != nil:
+		rows, err := r.q.ListTasksByStatusAndCategory(ctx, sqlcgen.ListTasksByStatusAndCategoryParams{
+			UserID:   toPgUUID(p.UserID),
+			Status:   string(*p.Status),
+			Category: string(*p.Category),
+			Limit:    p.Limit,
+			Offset:   p.Offset,
+		})
+		if err != nil {
+			return nil, 0, fmt.Errorf("list tasks by status+category: %w", err)
+		}
+		total, err := r.q.CountTasksByStatusAndCategory(ctx, sqlcgen.CountTasksByStatusAndCategoryParams{
+			UserID:   toPgUUID(p.UserID),
+			Status:   string(*p.Status),
+			Category: string(*p.Category),
+		})
+		if err != nil {
+			return nil, 0, fmt.Errorf("count tasks by status+category: %w", err)
+		}
+		return rowsToTasks(rows), total, nil
+
+	case p.Status != nil:
 		rows, err := r.q.ListTasksByStatus(ctx, sqlcgen.ListTasksByStatusParams{
 			UserID: toPgUUID(p.UserID),
 			Status: string(*p.Status),
@@ -48,7 +71,27 @@ func (r *TaskRepo) List(ctx context.Context, p ListTasksParams) ([]*task.Task, i
 			return nil, 0, fmt.Errorf("count tasks by status: %w", err)
 		}
 		return rowsToTasks(rows), total, nil
+
+	case p.Category != nil:
+		rows, err := r.q.ListTasksByCategory(ctx, sqlcgen.ListTasksByCategoryParams{
+			UserID:   toPgUUID(p.UserID),
+			Category: string(*p.Category),
+			Limit:    p.Limit,
+			Offset:   p.Offset,
+		})
+		if err != nil {
+			return nil, 0, fmt.Errorf("list tasks by category: %w", err)
+		}
+		total, err := r.q.CountTasksByCategory(ctx, sqlcgen.CountTasksByCategoryParams{
+			UserID:   toPgUUID(p.UserID),
+			Category: string(*p.Category),
+		})
+		if err != nil {
+			return nil, 0, fmt.Errorf("count tasks by category: %w", err)
+		}
+		return rowsToTasks(rows), total, nil
 	}
+
 	rows, err := r.q.ListTasks(ctx, sqlcgen.ListTasksParams{
 		UserID: toPgUUID(p.UserID),
 		Limit:  p.Limit,
@@ -84,6 +127,7 @@ func (r *TaskRepo) Create(ctx context.Context, t *task.Task) (*task.Task, error)
 		UserID:      toPgUUID(t.UserID),
 		Title:       t.Title,
 		Description: strToPtr(t.Description),
+		Category:    string(t.Category),
 		Status:      string(t.Status),
 		ExternalRef: strToPtr(t.ExternalRef),
 	})
@@ -99,6 +143,7 @@ func (r *TaskRepo) Update(ctx context.Context, t *task.Task) (*task.Task, error)
 		UserID:      toPgUUID(t.UserID),
 		Title:       t.Title,
 		Description: strToPtr(t.Description),
+		Category:    string(t.Category),
 		Status:      string(t.Status),
 		ExternalRef: strToPtr(t.ExternalRef),
 		StartedAt:   toPgTimePtr(t.StartedAt),
@@ -129,6 +174,7 @@ func rowToTask(r sqlcgen.Task) *task.Task {
 		UserID:      uuid.UUID(r.UserID.Bytes),
 		Title:       r.Title,
 		Description: ptrToStr(r.Description),
+		Category:    task.Category(r.Category),
 		Status:      task.Status(r.Status),
 		ExternalRef: ptrToStr(r.ExternalRef),
 		StartedAt:   pgTimeToPtr(r.StartedAt),
