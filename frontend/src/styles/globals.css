@@ -1,9 +1,52 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;0,500;1,400&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-canvas: #213448;
+  --color-surface: #283e54;
+  --color-elevated: #2f4760;
+  --color-instrument: #547792;
+  --color-mist: #94b4c1;
+  --color-parchment: #eae0cf;
+  --color-parchment-muted: #c9c0ad;
+  --color-growth: #7fb28e;
+  --color-friction: #d4a574;
+  --color-danger: #b66b6b;
+}
 
 html,
 body,
 #root {
   height: 100%;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-parchment);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at top left, rgba(84, 119, 146, 0.18), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(148, 180, 193, 0.06), transparent 60%);
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+::selection {
+  background: var(--color-instrument);
+  color: var(--color-parchment);
 }
