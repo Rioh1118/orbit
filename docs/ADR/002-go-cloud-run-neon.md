@@ -109,3 +109,4 @@ Accepted — 2026-05-30
 - ローカル開発DBは **Docker PostgreSQL** で立てる（Neonと同一バージョン）
 - 環境変数は `.env` (開発) + Cloud Run Secret Manager (本番)
 - マイグレーション順序は goose の version番号で厳守
+- 本ADRの技術スタック判断は [ADR 004](./004-pivot-to-growth-sensation.md) (成長実感装置への方向転換) でも変更されない
