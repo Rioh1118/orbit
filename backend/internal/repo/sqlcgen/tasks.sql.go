@@ -23,6 +23,23 @@ func (q *Queries) CountTasks(ctx context.Context, userID pgtype.UUID) (int64, er
 	return count, err
 }
 
+const countTasksByCategory = `-- name: CountTasksByCategory :one
+SELECT count(*) FROM tasks
+WHERE user_id = $1 AND category = $2 AND deleted_at IS NULL
+`
+
+type CountTasksByCategoryParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	Category string      `json:"category"`
+}
+
+func (q *Queries) CountTasksByCategory(ctx context.Context, arg CountTasksByCategoryParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countTasksByCategory, arg.UserID, arg.Category)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countTasksByStatus = `-- name: CountTasksByStatus :one
 SELECT count(*) FROM tasks
 WHERE user_id = $1 AND status = $2 AND deleted_at IS NULL
@@ -40,10 +57,28 @@ func (q *Queries) CountTasksByStatus(ctx context.Context, arg CountTasksByStatus
 	return count, err
 }
 
+const countTasksByStatusAndCategory = `-- name: CountTasksByStatusAndCategory :one
+SELECT count(*) FROM tasks
+WHERE user_id = $1 AND status = $2 AND category = $3 AND deleted_at IS NULL
+`
+
+type CountTasksByStatusAndCategoryParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	Status   string      `json:"status"`
+	Category string      `json:"category"`
+}
+
+func (q *Queries) CountTasksByStatusAndCategory(ctx context.Context, arg CountTasksByStatusAndCategoryParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countTasksByStatusAndCategory, arg.UserID, arg.Status, arg.Category)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTask = `-- name: CreateTask :one
-INSERT INTO tasks (id, user_id, title, description, status, external_ref)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at
+INSERT INTO tasks (id, user_id, title, description, category, status, external_ref)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at, category
 `
 
 type CreateTaskParams struct {
@@ -51,6 +86,7 @@ type CreateTaskParams struct {
 	UserID      pgtype.UUID `json:"user_id"`
 	Title       string      `json:"title"`
 	Description *string     `json:"description"`
+	Category    string      `json:"category"`
 	Status      string      `json:"status"`
 	ExternalRef *string     `json:"external_ref"`
 }
@@ -61,6 +97,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		arg.UserID,
 		arg.Title,
 		arg.Description,
+		arg.Category,
 		arg.Status,
 		arg.ExternalRef,
 	)
@@ -78,12 +115,13 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Category,
 	)
 	return i, err
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at FROM tasks
+SELECT id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at, category FROM tasks
 WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 LIMIT 1
 `
@@ -109,12 +147,13 @@ func (q *Queries) GetTask(ctx context.Context, arg GetTaskParams) (Task, error) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Category,
 	)
 	return i, err
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at FROM tasks
+SELECT id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at, category FROM tasks
 WHERE user_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -148,6 +187,60 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Category,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTasksByCategory = `-- name: ListTasksByCategory :many
+SELECT id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at, category FROM tasks
+WHERE user_id = $1 AND category = $2 AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $3 OFFSET $4
+`
+
+type ListTasksByCategoryParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	Category string      `json:"category"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
+}
+
+func (q *Queries) ListTasksByCategory(ctx context.Context, arg ListTasksByCategoryParams) ([]Task, error) {
+	rows, err := q.db.Query(ctx, listTasksByCategory,
+		arg.UserID,
+		arg.Category,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Task{}
+	for rows.Next() {
+		var i Task
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.ExternalRef,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Category,
 		); err != nil {
 			return nil, err
 		}
@@ -160,7 +253,7 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 }
 
 const listTasksByStatus = `-- name: ListTasksByStatus :many
-SELECT id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at FROM tasks
+SELECT id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at, category FROM tasks
 WHERE user_id = $1 AND status = $2 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4
@@ -200,6 +293,62 @@ func (q *Queries) ListTasksByStatus(ctx context.Context, arg ListTasksByStatusPa
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Category,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTasksByStatusAndCategory = `-- name: ListTasksByStatusAndCategory :many
+SELECT id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at, category FROM tasks
+WHERE user_id = $1 AND status = $2 AND category = $3 AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $4 OFFSET $5
+`
+
+type ListTasksByStatusAndCategoryParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	Status   string      `json:"status"`
+	Category string      `json:"category"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
+}
+
+func (q *Queries) ListTasksByStatusAndCategory(ctx context.Context, arg ListTasksByStatusAndCategoryParams) ([]Task, error) {
+	rows, err := q.db.Query(ctx, listTasksByStatusAndCategory,
+		arg.UserID,
+		arg.Status,
+		arg.Category,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Task{}
+	for rows.Next() {
+		var i Task
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.ExternalRef,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Category,
 		); err != nil {
 			return nil, err
 		}
@@ -231,13 +380,14 @@ const updateTask = `-- name: UpdateTask :one
 UPDATE tasks
 SET title = $3,
     description = $4,
-    status = $5,
-    external_ref = $6,
-    started_at = $7,
-    completed_at = $8,
+    category = $5,
+    status = $6,
+    external_ref = $7,
+    started_at = $8,
+    completed_at = $9,
     updated_at = now()
 WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
-RETURNING id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at
+RETURNING id, user_id, title, description, status, external_ref, started_at, completed_at, metadata, created_at, updated_at, deleted_at, category
 `
 
 type UpdateTaskParams struct {
@@ -245,6 +395,7 @@ type UpdateTaskParams struct {
 	UserID      pgtype.UUID        `json:"user_id"`
 	Title       string             `json:"title"`
 	Description *string            `json:"description"`
+	Category    string             `json:"category"`
 	Status      string             `json:"status"`
 	ExternalRef *string            `json:"external_ref"`
 	StartedAt   pgtype.Timestamptz `json:"started_at"`
@@ -257,6 +408,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		arg.UserID,
 		arg.Title,
 		arg.Description,
+		arg.Category,
 		arg.Status,
 		arg.ExternalRef,
 		arg.StartedAt,
@@ -276,6 +428,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Category,
 	)
 	return i, err
 }

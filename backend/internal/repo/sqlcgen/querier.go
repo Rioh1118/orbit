@@ -11,19 +11,39 @@ import (
 )
 
 type Querier interface {
+	CountFrictions(ctx context.Context, arg CountFrictionsParams) (int64, error)
 	CountTasks(ctx context.Context, userID pgtype.UUID) (int64, error)
+	CountTasksByCategory(ctx context.Context, arg CountTasksByCategoryParams) (int64, error)
 	CountTasksByStatus(ctx context.Context, arg CountTasksByStatusParams) (int64, error)
+	CountTasksByStatusAndCategory(ctx context.Context, arg CountTasksByStatusAndCategoryParams) (int64, error)
+	CountWorkSlices(ctx context.Context, arg CountWorkSlicesParams) (int64, error)
+	CreateFriction(ctx context.Context, arg CreateFrictionParams) (Friction, error)
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateWorkSlice(ctx context.Context, arg CreateWorkSliceParams) (WorkSlice, error)
+	DeleteFriction(ctx context.Context, arg DeleteFrictionParams) error
+	DeleteWorkSlice(ctx context.Context, arg DeleteWorkSliceParams) error
+	GetFriction(ctx context.Context, arg GetFrictionParams) (Friction, error)
 	GetTask(ctx context.Context, arg GetTaskParams) (Task, error)
 	GetUserByAPIKeyPrefix(ctx context.Context, apiKeyPrefix string) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
+	GetWorkSlice(ctx context.Context, arg GetWorkSliceParams) (WorkSlice, error)
+	ListActiveWorkSlices(ctx context.Context, userID pgtype.UUID) ([]WorkSlice, error)
+	ListFrictions(ctx context.Context, arg ListFrictionsParams) ([]Friction, error)
 	ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, error)
+	ListTasksByCategory(ctx context.Context, arg ListTasksByCategoryParams) ([]Task, error)
 	ListTasksByStatus(ctx context.Context, arg ListTasksByStatusParams) ([]Task, error)
+	ListTasksByStatusAndCategory(ctx context.Context, arg ListTasksByStatusAndCategoryParams) ([]Task, error)
+	ListWorkSlices(ctx context.Context, arg ListWorkSlicesParams) ([]WorkSlice, error)
 	SoftDeleteTask(ctx context.Context, arg SoftDeleteTaskParams) error
+	// Sum durations by mode for ended slices within [from, to).
+	// Treats in-progress slices (ended_at NULL) as 0 to keep the query stable.
+	SumWorkSlicesByModeInRange(ctx context.Context, arg SumWorkSlicesByModeInRangeParams) ([]SumWorkSlicesByModeInRangeRow, error)
 	UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) (User, error)
+	UpdateFriction(ctx context.Context, arg UpdateFrictionParams) (Friction, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)
+	UpdateWorkSlice(ctx context.Context, arg UpdateWorkSliceParams) (WorkSlice, error)
 }
 
 var _ Querier = (*Queries)(nil)
