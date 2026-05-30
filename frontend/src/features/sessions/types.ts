@@ -1,4 +1,4 @@
-export type SliceMode =
+export type SessionMode =
   | "spec_read"
   | "task_breakdown"
   | "code_explore"
@@ -11,13 +11,13 @@ export type SliceMode =
   | "consult"
   | "other";
 
-export interface SliceModeMeta {
-  value: SliceMode;
+export interface SessionModeMeta {
+  value: SessionMode;
   label: string;
   key: string;
 }
 
-export const SLICE_MODES: ReadonlyArray<SliceModeMeta> = [
+export const SESSION_MODES: ReadonlyArray<SessionModeMeta> = [
   { value: "spec_read", label: "spec read", key: "S" },
   { value: "task_breakdown", label: "breakdown", key: "B" },
   { value: "code_explore", label: "code explore", key: "E" },
@@ -31,26 +31,26 @@ export const SLICE_MODES: ReadonlyArray<SliceModeMeta> = [
   { value: "other", label: "other", key: "O" },
 ];
 
-export const SLICE_MODE_BY_KEY: Record<string, SliceMode> = SLICE_MODES.reduce(
+export const SESSION_MODE_BY_KEY: Record<string, SessionMode> = SESSION_MODES.reduce(
   (acc, m) => {
     acc[m.key.toLowerCase()] = m.value;
     return acc;
   },
-  {} as Record<string, SliceMode>,
+  {} as Record<string, SessionMode>,
 );
 
-export const SLICE_MODE_META: Record<SliceMode, SliceModeMeta> = SLICE_MODES.reduce(
+export const SESSION_MODE_META: Record<SessionMode, SessionModeMeta> = SESSION_MODES.reduce(
   (acc, m) => {
     acc[m.value] = m;
     return acc;
   },
-  {} as Record<SliceMode, SliceModeMeta>,
+  {} as Record<SessionMode, SessionModeMeta>,
 );
 
-export interface WorkSlice {
+export interface WorkSession {
   id: string;
   task_id: string | null;
-  mode: SliceMode;
+  mode: SessionMode;
   started_at: string;
   ended_at: string | null;
   duration_sec: number | null;
@@ -60,12 +60,12 @@ export interface WorkSlice {
   updated_at: string;
 }
 
-export interface StartSliceInput {
-  mode: SliceMode;
+export interface StartSessionInput {
+  mode: SessionMode;
   task_id?: string | null;
   note?: string;
 }
 
-export interface EndSliceInput {
+export interface EndSessionInput {
   density?: number;
 }

@@ -43,13 +43,13 @@ func main() {
 
 	userRepo := repo.NewUserRepo(pool)
 	taskRepo := repo.NewTaskRepo(pool)
-	wsRepo := repo.NewWorkSliceRepo(pool)
+	wsRepo := repo.NewWorkSessionRepo(pool)
 	frictionRepo := repo.NewFrictionRepo(pool)
 	taskSvc := service.NewTaskService(taskRepo)
-	wsSvc := service.NewWorkSliceService(wsRepo, taskRepo)
+	wsSvc := service.NewWorkSessionService(wsRepo, taskRepo)
 	frictionSvc := service.NewFrictionService(frictionRepo)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
-	wsHandler := handlers.NewWorkSliceHandler(wsSvc)
+	wsHandler := handlers.NewWorkSessionHandler(wsSvc)
 	frictionHandler := handlers.NewFrictionHandler(frictionSvc)
 
 	r := chi.NewRouter()
@@ -74,7 +74,7 @@ func main() {
 	r.Route("/v1", func(r chi.Router) {
 		r.Use(appmw.APIKeyAuth(userRepo, cfg.APIKeySalt))
 		r.Mount("/tasks", taskHandler.Routes())
-		r.Mount("/work-slices", wsHandler.Routes())
+		r.Mount("/work-sessions", wsHandler.Routes())
 		r.Mount("/frictions", frictionHandler.Routes())
 	})
 

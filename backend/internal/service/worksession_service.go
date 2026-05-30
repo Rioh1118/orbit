@@ -6,31 +6,31 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Rioh1118/orbit/backend/internal/domain/workslice"
+	"github.com/Rioh1118/orbit/backend/internal/domain/worksession"
 	"github.com/Rioh1118/orbit/backend/internal/repo"
 	"github.com/google/uuid"
 )
 
-type WorkSliceService struct {
-	repo     *repo.WorkSliceRepo
+type WorkSessionService struct {
+	repo     *repo.WorkSessionRepo
 	taskRepo *repo.TaskRepo
 }
 
-func NewWorkSliceService(r *repo.WorkSliceRepo, taskRepo *repo.TaskRepo) *WorkSliceService {
-	return &WorkSliceService{repo: r, taskRepo: taskRepo}
+func NewWorkSessionService(r *repo.WorkSessionRepo, taskRepo *repo.TaskRepo) *WorkSessionService {
+	return &WorkSessionService{repo: r, taskRepo: taskRepo}
 }
 
 type WSListInput struct {
 	UserID uuid.UUID
 	TaskID *uuid.UUID
-	Mode   *workslice.Mode
+	Mode   *worksession.Mode
 	From   *time.Time
 	To     *time.Time
 	Limit  int
 	Offset int
 }
 
-func (s *WorkSliceService) List(ctx context.Context, in WSListInput) ([]*workslice.WorkSlice, int64, error) {
+func (s *WorkSessionService) List(ctx context.Context, in WSListInput) ([]*worksession.WorkSession, int64, error) {
 	limit := in.Limit
 	if limit <= 0 {
 		limit = 50
@@ -38,7 +38,7 @@ func (s *WorkSliceService) List(ctx context.Context, in WSListInput) ([]*worksli
 	if limit > 200 {
 		limit = 200
 	}
-	return s.repo.List(ctx, repo.ListWorkSlicesParams{
+	return s.repo.List(ctx, repo.ListWorkSessionsParams{
 		UserID: in.UserID,
 		TaskID: in.TaskID,
 		Mode:   in.Mode,
@@ -49,28 +49,28 @@ func (s *WorkSliceService) List(ctx context.Context, in WSListInput) ([]*worksli
 	})
 }
 
-func (s *WorkSliceService) ListActive(ctx context.Context, userID uuid.UUID) ([]*workslice.WorkSlice, error) {
+func (s *WorkSessionService) ListActive(ctx context.Context, userID uuid.UUID) ([]*worksession.WorkSession, error) {
 	return s.repo.ListActive(ctx, userID)
 }
 
-func (s *WorkSliceService) Get(ctx context.Context, id, userID uuid.UUID) (*workslice.WorkSlice, error) {
+func (s *WorkSessionService) Get(ctx context.Context, id, userID uuid.UUID) (*worksession.WorkSession, error) {
 	return s.repo.Get(ctx, id, userID)
 }
 
 type WSStartInput struct {
 	UserID uuid.UUID
 	TaskID *uuid.UUID
-	Mode   workslice.Mode
+	Mode   worksession.Mode
 	Note   string
 }
 
-func (s *WorkSliceService) Start(ctx context.Context, in WSStartInput) (*workslice.WorkSlice, error) {
+func (s *WorkSessionService) Start(ctx context.Context, in WSStartInput) (*worksession.WorkSession, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, fmt.Errorf("uuid: %w", err)
 	}
 	now := time.Now().UTC()
-	w := &workslice.WorkSlice{
+	w := &worksession.WorkSession{
 		ID:        id,
 		UserID:    in.UserID,
 		TaskID:    in.TaskID,
@@ -85,7 +85,7 @@ func (s *WorkSliceService) Start(ctx context.Context, in WSStartInput) (*worksli
 	if err != nil {
 		return nil, err
 	}
-	// Auto-set tasks.started_at on first slice. Best-effort, ignore errors.
+	// Auto-set tasks.started_at on first session. Best-effort, ignore errors.
 	if in.TaskID != nil {
 		if t, err := s.taskRepo.Get(ctx, *in.TaskID, in.UserID); err == nil && t.StartedAt == nil {
 			t.StartedAt = &now
@@ -101,7 +101,7 @@ type WSEndInput struct {
 	Density *int
 }
 
-func (s *WorkSliceService) End(ctx context.Context, in WSEndInput) (*workslice.WorkSlice, error) {
+func (s *WorkSessionService) End(ctx context.Context, in WSEndInput) (*worksession.WorkSession, error) {
 	w, err := s.repo.Get(ctx, in.ID, in.UserID)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (s *WorkSliceService) End(ctx context.Context, in WSEndInput) (*workslice.W
 type WSUpdateInput struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
-	Mode      *workslice.Mode
+	Mode      *worksession.Mode
 	TaskID    *uuid.UUID
 	StartedAt *time.Time
 	EndedAt   *time.Time
@@ -125,14 +125,14 @@ type WSUpdateInput struct {
 	ClearTaskID bool
 }
 
-func (s *WorkSliceService) Update(ctx context.Context, in WSUpdateInput) (*workslice.WorkSlice, error) {
+func (s *WorkSessionService) Update(ctx context.Context, in WSUpdateInput) (*worksession.WorkSession, error) {
 	w, err := s.repo.Get(ctx, in.ID, in.UserID)
 	if err != nil {
 		return nil, err
 	}
 	if in.Mode != nil {
 		if !in.Mode.Valid() {
-			return nil, workslice.ErrInvalidMode
+			return nil, worksession.ErrInvalidMode
 		}
 		w.Mode = *in.Mode
 	}
@@ -162,12 +162,12 @@ func (s *WorkSliceService) Update(ctx context.Context, in WSUpdateInput) (*works
 	return s.repo.Update(ctx, w)
 }
 
-func (s *WorkSliceService) Delete(ctx context.Context, id, userID uuid.UUID) error {
+func (s *WorkSessionService) Delete(ctx context.Context, id, userID uuid.UUID) error {
 	return s.repo.Delete(ctx, id, userID)
 }
 
 // SumByModeForRange returns total seconds per mode in [from, to).
-func (s *WorkSliceService) SumByModeForRange(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[workslice.Mode]int64, error) {
+func (s *WorkSessionService) SumByModeForRange(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[worksession.Mode]int64, error) {
 	if !to.After(from) {
 		return nil, errors.New("to must be after from")
 	}

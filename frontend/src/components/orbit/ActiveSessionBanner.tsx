@@ -1,18 +1,18 @@
 import { Badge } from "@/components/ui/Badge";
 
-interface ActiveSliceBannerProps {
+interface ActiveSessionBannerProps {
   taskTitle: string;
   mode: string;
   modeKey: string;
   elapsedMinutes: number;
 }
 
-export function ActiveSliceBanner({
+export function ActiveSessionBanner({
   taskTitle,
   mode,
   modeKey,
   elapsedMinutes,
-}: ActiveSliceBannerProps) {
+}: ActiveSessionBannerProps) {
   const hours = Math.floor(elapsedMinutes / 60);
   const mins = elapsedMinutes % 60;
   const elapsed = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;

@@ -17,7 +17,7 @@ function buildQuery(params: QueryParams): string {
 
 export interface ListFrictionsQuery {
   task_id?: string;
-  work_slice_id?: string;
+  work_session_id?: string;
   pattern_tag?: string;
   resolved?: boolean;
   from?: string;

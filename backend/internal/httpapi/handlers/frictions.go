@@ -36,7 +36,7 @@ func (h *FrictionHandler) Routes() http.Handler {
 type frictionDTO struct {
 	ID             uuid.UUID  `json:"id"`
 	TaskID         *uuid.UUID `json:"task_id"`
-	WorkSliceID    *uuid.UUID `json:"work_slice_id"`
+	WorkSessionID    *uuid.UUID `json:"work_session_id"`
 	PatternTag     string     `json:"pattern_tag"`
 	Severity       int        `json:"severity"`
 	Description    string     `json:"description"`
@@ -50,7 +50,7 @@ func fToDTO(f *friction.Friction) frictionDTO {
 	return frictionDTO{
 		ID:             f.ID,
 		TaskID:         f.TaskID,
-		WorkSliceID:    f.WorkSliceID,
+		WorkSessionID:    f.WorkSessionID,
 		PatternTag:     string(f.PatternTag),
 		Severity:       f.Severity,
 		Description:    f.Description,
@@ -77,13 +77,13 @@ func (h *FrictionHandler) list(w http.ResponseWriter, r *http.Request) {
 		}
 		in.TaskID = &id
 	}
-	if s := q.Get("work_slice_id"); s != "" {
+	if s := q.Get("work_session_id"); s != "" {
 		id, err := uuid.Parse(s)
 		if err != nil {
-			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid work_slice_id", nil)
+			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid work_session_id", nil)
 			return
 		}
-		in.WorkSliceID = &id
+		in.WorkSessionID = &id
 	}
 	if s := q.Get("pattern_tag"); s != "" {
 		tag := friction.PatternTag(s)
@@ -138,7 +138,7 @@ func (h *FrictionHandler) list(w http.ResponseWriter, r *http.Request) {
 
 type fCreateReq struct {
 	TaskID      *string `json:"task_id"`
-	WorkSliceID *string `json:"work_slice_id"`
+	WorkSessionID *string `json:"work_session_id"`
 	PatternTag  string  `json:"pattern_tag"`
 	Severity    int     `json:"severity"`
 	Description string  `json:"description"`
@@ -167,7 +167,7 @@ func (h *FrictionHandler) create(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 		return
 	}
-	wsID, err := parseUUIDPtr(req.WorkSliceID, "work_slice_id")
+	wsID, err := parseUUIDPtr(req.WorkSessionID, "work_session_id")
 	if err != nil {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 		return
@@ -180,7 +180,7 @@ func (h *FrictionHandler) create(w http.ResponseWriter, r *http.Request) {
 	f, err := h.svc.Create(r.Context(), service.FCreateInput{
 		UserID:      uid,
 		TaskID:      taskID,
-		WorkSliceID: wsID,
+		WorkSessionID: wsID,
 		PatternTag:  tag,
 		Severity:    req.Severity,
 		Description: req.Description,
@@ -198,7 +198,7 @@ func (h *FrictionHandler) create(w http.ResponseWriter, r *http.Request) {
 
 type fUpdateReq struct {
 	TaskID         *string `json:"task_id"`
-	WorkSliceID    *string `json:"work_slice_id"`
+	WorkSessionID    *string `json:"work_session_id"`
 	PatternTag     *string `json:"pattern_tag"`
 	Severity       *int    `json:"severity"`
 	Description    *string `json:"description"`
@@ -238,16 +238,16 @@ func (h *FrictionHandler) update(w http.ResponseWriter, r *http.Request) {
 			in.TaskID = tid
 		}
 	}
-	if req.WorkSliceID != nil {
-		if *req.WorkSliceID == "" {
-			in.ClearWorkSlice = true
+	if req.WorkSessionID != nil {
+		if *req.WorkSessionID == "" {
+			in.ClearWorkSession = true
 		} else {
-			wid, err := parseUUIDPtr(req.WorkSliceID, "work_slice_id")
+			wid, err := parseUUIDPtr(req.WorkSessionID, "work_session_id")
 			if err != nil {
 				response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 				return
 			}
-			in.WorkSliceID = wid
+			in.WorkSessionID = wid
 		}
 	}
 	if req.PatternTag != nil {

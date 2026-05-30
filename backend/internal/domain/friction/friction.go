@@ -48,7 +48,7 @@ type Friction struct {
 	ID             uuid.UUID
 	UserID         uuid.UUID
 	TaskID         *uuid.UUID
-	WorkSliceID    *uuid.UUID
+	WorkSessionID    *uuid.UUID
 	PatternTag     PatternTag
 	Severity       int
 	Description    string

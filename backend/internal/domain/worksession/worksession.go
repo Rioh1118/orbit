@@ -1,4 +1,4 @@
-package workslice
+package worksession
 
 import (
 	"errors"
@@ -75,7 +75,7 @@ const (
 	maxNoteLen = 1000
 )
 
-type WorkSlice struct {
+type WorkSession struct {
 	ID          uuid.UUID
 	UserID      uuid.UUID
 	TaskID      *uuid.UUID
@@ -90,15 +90,15 @@ type WorkSlice struct {
 }
 
 var (
-	ErrInvalidMode    = errors.New("invalid work slice mode")
+	ErrInvalidMode    = errors.New("invalid work session mode")
 	ErrInvalidDensity = errors.New("density must be 1-5")
 	ErrNoteTooLong    = errors.New("note must be <= 1000 chars")
-	ErrAlreadyEnded   = errors.New("work slice already ended")
+	ErrAlreadyEnded   = errors.New("work session already ended")
 	ErrEndBeforeStart = errors.New("ended_at must be >= started_at")
 	ErrZeroStartedAt  = errors.New("started_at is required")
 )
 
-func (w *WorkSlice) Validate() error {
+func (w *WorkSession) Validate() error {
 	if !w.Mode.Valid() {
 		return ErrInvalidMode
 	}
@@ -118,7 +118,7 @@ func (w *WorkSlice) Validate() error {
 }
 
 // End sets ended_at, duration_sec, and optional density.
-func (w *WorkSlice) End(at time.Time, density *int) error {
+func (w *WorkSession) End(at time.Time, density *int) error {
 	if w.EndedAt != nil {
 		return ErrAlreadyEnded
 	}

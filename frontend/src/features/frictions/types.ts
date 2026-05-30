@@ -42,7 +42,7 @@ export const PATTERN_TAG_BY_KEY: Record<string, FrictionPatternTag> = PATTERN_TA
 export interface Friction {
   id: string;
   task_id: string | null;
-  work_slice_id: string | null;
+  work_session_id: string | null;
   pattern_tag: FrictionPatternTag;
   severity: number;
   description: string;
@@ -54,7 +54,7 @@ export interface Friction {
 
 export interface CreateFrictionInput {
   task_id?: string | null;
-  work_slice_id?: string | null;
+  work_session_id?: string | null;
   pattern_tag: FrictionPatternTag;
   severity?: number;
   description: string;
@@ -62,7 +62,7 @@ export interface CreateFrictionInput {
 
 export interface UpdateFrictionInput {
   task_id?: string | null;
-  work_slice_id?: string | null;
+  work_session_id?: string | null;
   pattern_tag?: FrictionPatternTag;
   severity?: number;
   description?: string;

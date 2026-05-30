@@ -26,7 +26,7 @@ func NewFrictionRepo(pool *pgxpool.Pool) *FrictionRepo {
 type ListFrictionsParams struct {
 	UserID      uuid.UUID
 	TaskID      *uuid.UUID
-	WorkSliceID *uuid.UUID
+	WorkSessionID *uuid.UUID
 	PatternTag  *friction.PatternTag
 	Resolved    *bool
 	From        *time.Time
@@ -44,7 +44,7 @@ func (r *FrictionRepo) List(ctx context.Context, p ListFrictionsParams) ([]*fric
 	rows, err := r.q.ListFrictions(ctx, sqlcgen.ListFrictionsParams{
 		UserID:      toPgUUID(p.UserID),
 		TaskID:      toPgUUIDPtr(p.TaskID),
-		WorkSliceID: toPgUUIDPtr(p.WorkSliceID),
+		WorkSliceID: toPgUUIDPtr(p.WorkSessionID),
 		PatternTag:  tagStr,
 		Resolved:    p.Resolved,
 		FromTime:    toPgTimePtr(p.From),
@@ -58,7 +58,7 @@ func (r *FrictionRepo) List(ctx context.Context, p ListFrictionsParams) ([]*fric
 	total, err := r.q.CountFrictions(ctx, sqlcgen.CountFrictionsParams{
 		UserID:      toPgUUID(p.UserID),
 		TaskID:      toPgUUIDPtr(p.TaskID),
-		WorkSliceID: toPgUUIDPtr(p.WorkSliceID),
+		WorkSliceID: toPgUUIDPtr(p.WorkSessionID),
 		PatternTag:  tagStr,
 		Resolved:    p.Resolved,
 		FromTime:    toPgTimePtr(p.From),
@@ -89,7 +89,7 @@ func (r *FrictionRepo) Create(ctx context.Context, f *friction.Friction) (*frict
 		ID:          toPgUUID(f.ID),
 		UserID:      toPgUUID(f.UserID),
 		TaskID:      toPgUUIDPtr(f.TaskID),
-		WorkSliceID: toPgUUIDPtr(f.WorkSliceID),
+		WorkSliceID: toPgUUIDPtr(f.WorkSessionID),
 		PatternTag:  string(f.PatternTag),
 		Severity:    int32(f.Severity),
 		Description: f.Description,
@@ -105,7 +105,7 @@ func (r *FrictionRepo) Update(ctx context.Context, f *friction.Friction) (*frict
 		ID:             toPgUUID(f.ID),
 		UserID:         toPgUUID(f.UserID),
 		TaskID:         toPgUUIDPtr(f.TaskID),
-		WorkSliceID:    toPgUUIDPtr(f.WorkSliceID),
+		WorkSliceID:    toPgUUIDPtr(f.WorkSessionID),
 		PatternTag:     string(f.PatternTag),
 		Severity:       int32(f.Severity),
 		Description:    f.Description,
@@ -136,7 +136,7 @@ func rowToFriction(r sqlcgen.Friction) *friction.Friction {
 		ID:             uuid.UUID(r.ID.Bytes),
 		UserID:         uuid.UUID(r.UserID.Bytes),
 		TaskID:         pgUUIDToPtr(r.TaskID),
-		WorkSliceID:    pgUUIDToPtr(r.WorkSliceID),
+		WorkSessionID:    pgUUIDToPtr(r.WorkSliceID),
 		PatternTag:     friction.PatternTag(r.PatternTag),
 		Severity:       int(r.Severity),
 		Description:    r.Description,
