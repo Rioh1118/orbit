@@ -1,0 +1,120 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/Rioh1118/orbit/backend/internal/domain/task"
+	"github.com/Rioh1118/orbit/backend/internal/repo"
+	"github.com/google/uuid"
+)
+
+type TaskService struct {
+	repo *repo.TaskRepo
+}
+
+func NewTaskService(r *repo.TaskRepo) *TaskService {
+	return &TaskService{repo: r}
+}
+
+type ListInput struct {
+	UserID uuid.UUID
+	Status *task.Status
+	Limit  int
+	Offset int
+}
+
+func (s *TaskService) List(ctx context.Context, in ListInput) ([]*task.Task, int64, error) {
+	limit := in.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	return s.repo.List(ctx, repo.ListTasksParams{
+		UserID: in.UserID,
+		Status: in.Status,
+		Limit:  int32(limit),
+		Offset: int32(in.Offset),
+	})
+}
+
+func (s *TaskService) Get(ctx context.Context, id, userID uuid.UUID) (*task.Task, error) {
+	return s.repo.Get(ctx, id, userID)
+}
+
+type CreateInput struct {
+	UserID      uuid.UUID
+	Title       string
+	Description string
+	Status      task.Status
+	ExternalRef string
+}
+
+func (s *TaskService) Create(ctx context.Context, in CreateInput) (*task.Task, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("uuid: %w", err)
+	}
+	status := in.Status
+	if status == "" {
+		status = task.StatusOpen
+	}
+	t := &task.Task{
+		ID:          id,
+		UserID:      in.UserID,
+		Title:       in.Title,
+		Description: in.Description,
+		Status:      status,
+		ExternalRef: in.ExternalRef,
+	}
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
+	return s.repo.Create(ctx, t)
+}
+
+type UpdateInput struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Title       *string
+	Description *string
+	Status      *task.Status
+	ExternalRef *string
+}
+
+func (s *TaskService) Update(ctx context.Context, in UpdateInput) (*task.Task, error) {
+	existing, err := s.repo.Get(ctx, in.ID, in.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if in.Title != nil {
+		existing.Title = *in.Title
+	}
+	if in.Description != nil {
+		existing.Description = *in.Description
+	}
+	if in.ExternalRef != nil {
+		existing.ExternalRef = *in.ExternalRef
+	}
+	if in.Status != nil {
+		if !in.Status.Valid() {
+			return nil, task.ErrInvalidStatus
+		}
+		if *in.Status == task.StatusDone && existing.CompletedAt == nil {
+			now := time.Now().UTC()
+			existing.CompletedAt = &now
+		}
+		existing.Status = *in.Status
+	}
+	if err := existing.Validate(); err != nil {
+		return nil, err
+	}
+	return s.repo.Update(ctx, existing)
+}
+
+func (s *TaskService) Delete(ctx context.Context, id, userID uuid.UUID) error {
+	return s.repo.SoftDelete(ctx, id, userID)
+}

@@ -1,19 +1,31 @@
+import { Link, NavLink, Route, Routes } from "react-router-dom";
+import TodayPage from "./pages/TodayPage";
+import TasksPage from "./pages/TasksPage";
+
+const navItemClass = ({ isActive }: { isActive: boolean }) =>
+  isActive ? "text-white" : "text-neutral-400 hover:text-neutral-200";
+
 export default function App() {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
-      <header className="border-b border-neutral-800 px-6 py-4">
-        <h1 className="text-xl font-semibold tracking-tight">Orbit</h1>
-        <p className="text-xs text-neutral-400">
-          開発作業ログ + 成長観察アプリ (Phase 1 skeleton)
-        </p>
+      <header className="flex items-center gap-6 border-b border-neutral-800 px-6 py-4">
+        <Link to="/" className="text-xl font-semibold tracking-tight">
+          Orbit
+        </Link>
+        <nav className="flex gap-4 text-sm">
+          <NavLink to="/" end className={navItemClass}>
+            Today
+          </NavLink>
+          <NavLink to="/tasks" className={navItemClass}>
+            Tasks
+          </NavLink>
+        </nav>
       </header>
       <main className="px-6 py-8">
-        <section className="max-w-2xl">
-          <h2 className="text-lg font-medium">Today</h2>
-          <p className="mt-2 text-sm text-neutral-400">
-            ここに進行中の Work Slice と本日のサマリが入る予定。
-          </p>
-        </section>
+        <Routes>
+          <Route path="/" element={<TodayPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
+        </Routes>
       </main>
     </div>
   );
