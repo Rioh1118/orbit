@@ -38,6 +38,7 @@ type taskDTO struct {
 	ID          uuid.UUID `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
+	Category    string    `json:"category"`
 	Status      string    `json:"status"`
 	ExternalRef string    `json:"external_ref"`
 	StartedAt   *string   `json:"started_at"`
@@ -59,6 +60,7 @@ func toDTO(t *task.Task) taskDTO {
 		ID:          t.ID,
 		Title:       t.Title,
 		Description: t.Description,
+		Category:    string(t.Category),
 		Status:      string(t.Status),
 		ExternalRef: t.ExternalRef,
 		StartedAt:   fmtTimePtr(t.StartedAt),
@@ -72,6 +74,7 @@ func (h *TaskHandler) list(w http.ResponseWriter, r *http.Request) {
 	uid, _ := appmw.UserIDFromCtx(r.Context())
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
 	var status *task.Status
 	if s := r.URL.Query().Get("status"); s != "" {
 		st := task.Status(s)
@@ -81,8 +84,19 @@ func (h *TaskHandler) list(w http.ResponseWriter, r *http.Request) {
 		}
 		status = &st
 	}
+
+	var category *task.Category
+	if c := r.URL.Query().Get("category"); c != "" {
+		ct := task.Category(c)
+		if !ct.Valid() {
+			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid category", map[string]any{"field": "category"})
+			return
+		}
+		category = &ct
+	}
+
 	tasks, total, err := h.svc.List(r.Context(), service.ListInput{
-		UserID: uid, Status: status, Limit: limit, Offset: offset,
+		UserID: uid, Status: status, Category: category, Limit: limit, Offset: offset,
 	})
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
@@ -104,6 +118,7 @@ func (h *TaskHandler) list(w http.ResponseWriter, r *http.Request) {
 type createReq struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Category    string `json:"category"`
 	Status      string `json:"status"`
 	ExternalRef string `json:"external_ref"`
 }
@@ -119,11 +134,14 @@ func (h *TaskHandler) create(w http.ResponseWriter, r *http.Request) {
 		UserID:      uid,
 		Title:       req.Title,
 		Description: req.Description,
+		Category:    task.Category(req.Category),
 		Status:      task.Status(req.Status),
 		ExternalRef: req.ExternalRef,
 	})
 	if err != nil {
-		if errors.Is(err, task.ErrInvalidTitle) || errors.Is(err, task.ErrInvalidStatus) {
+		if errors.Is(err, task.ErrInvalidTitle) ||
+			errors.Is(err, task.ErrInvalidStatus) ||
+			errors.Is(err, task.ErrInvalidCategory) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
@@ -155,6 +173,7 @@ func (h *TaskHandler) get(w http.ResponseWriter, r *http.Request) {
 type updateReq struct {
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
+	Category    *string `json:"category"`
 	Status      *string `json:"status"`
 	ExternalRef *string `json:"external_ref"`
 }
@@ -176,11 +195,17 @@ func (h *TaskHandler) update(w http.ResponseWriter, r *http.Request) {
 		s := task.Status(*req.Status)
 		status = &s
 	}
+	var category *task.Category
+	if req.Category != nil {
+		c := task.Category(*req.Category)
+		category = &c
+	}
 	t, err := h.svc.Update(r.Context(), service.UpdateInput{
 		ID:          id,
 		UserID:      uid,
 		Title:       req.Title,
 		Description: req.Description,
+		Category:    category,
 		Status:      status,
 		ExternalRef: req.ExternalRef,
 	})
@@ -189,7 +214,9 @@ func (h *TaskHandler) update(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusNotFound, "NOT_FOUND", "task not found", nil)
 			return
 		}
-		if errors.Is(err, task.ErrInvalidStatus) || errors.Is(err, task.ErrInvalidTitle) {
+		if errors.Is(err, task.ErrInvalidStatus) ||
+			errors.Is(err, task.ErrInvalidTitle) ||
+			errors.Is(err, task.ErrInvalidCategory) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}

@@ -26,6 +26,28 @@ func TestStatusValid(t *testing.T) {
 	}
 }
 
+func TestCategoryValid(t *testing.T) {
+	cases := []struct {
+		in   Category
+		want bool
+	}{
+		{CategoryLearning, true},
+		{CategoryNewFeature, true},
+		{CategoryBugFix, true},
+		{CategoryRefactor, true},
+		{CategoryInvestigation, true},
+		{CategorySupport, true},
+		{CategoryOther, true},
+		{Category(""), false},
+		{Category("unknown"), false},
+	}
+	for _, c := range cases {
+		if got := c.in.Valid(); got != c.want {
+			t.Errorf("Category(%q).Valid() = %v, want %v", c.in, got, c.want)
+		}
+	}
+}
+
 func TestTaskValidate(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -34,17 +56,27 @@ func TestTaskValidate(t *testing.T) {
 	}{
 		{
 			name: "valid",
-			task: Task{ID: uuid.New(), UserID: uuid.New(), Title: "ok", Status: StatusOpen},
+			task: Task{ID: uuid.New(), UserID: uuid.New(), Title: "ok", Status: StatusOpen, Category: CategoryOther},
 		},
 		{
 			name:    "empty title",
-			task:    Task{ID: uuid.New(), UserID: uuid.New(), Title: "", Status: StatusOpen},
+			task:    Task{ID: uuid.New(), UserID: uuid.New(), Title: "", Status: StatusOpen, Category: CategoryOther},
 			wantErr: ErrInvalidTitle,
 		},
 		{
 			name:    "invalid status",
-			task:    Task{ID: uuid.New(), UserID: uuid.New(), Title: "ok", Status: "garbage"},
+			task:    Task{ID: uuid.New(), UserID: uuid.New(), Title: "ok", Status: "garbage", Category: CategoryOther},
 			wantErr: ErrInvalidStatus,
+		},
+		{
+			name:    "invalid category",
+			task:    Task{ID: uuid.New(), UserID: uuid.New(), Title: "ok", Status: StatusOpen, Category: "garbage"},
+			wantErr: ErrInvalidCategory,
+		},
+		{
+			name:    "empty category",
+			task:    Task{ID: uuid.New(), UserID: uuid.New(), Title: "ok", Status: StatusOpen, Category: ""},
+			wantErr: ErrInvalidCategory,
 		},
 	}
 	for _, c := range cases {

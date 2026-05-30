@@ -3,34 +3,34 @@
 ## Base URL
 
 - Local dev: `http://localhost:8080`
-- Production: `https://api.orbit.example.com` (Cloud Run, ドメインは後で確定)
+- Production: `https://api.orbit.example.com` (Cloud Run、ドメインは後で確定)
 
 ## バージョニング
 
-URLパスでバージョン管理: `/v1/...`
+URLパスで管理: `/v1/...`
 
 ## 認証
 
-### Phase 1: APIキー認証（シングルユーザー）
+### Phase 1: APIキー認証 (シングルユーザー)
 
 ```
 Authorization: Bearer orb_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 - キーは `orb_` + ランダム32文字
-- DBには **ハッシュのみ** 保存（sha256 + サーバー固定salt or argon2id）
-- 起動時にユーザーを seed し、APIキーは初回マイグレーション時に1度だけstdoutに表示
-- APIキー紛失時は再生成スクリプトを Phase 1 では CLI として用意
+- DB には **ハッシュのみ** 保存 (sha256 + サーバー固定 salt)
+- `cmd/keygen -email <email>` でユーザー作成 + APIキー生成、生キーは stdout に1度だけ表示
+- APIキー紛失時は `keygen` で再生成
 
 認証ミドルウェアの動き:
 
 1. `Authorization` ヘッダから Bearer トークン取得
-2. プレフィックス + ハッシュで users テーブル検索
-3. ヒットすればコンテキストに `user_id` を注入
+2. プレフィックス (12文字) で users テーブル検索
+3. ヒットすれば定数時間比較で hash 検証 → コンテキストに `user_id` 注入
 
 ### Phase 2以降
 
-GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
+GitHub OAuth を予定 ([ROADMAP.md](./ROADMAP.md) 参照)
 
 ## レスポンスフォーマット
 
@@ -39,24 +39,16 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
 ### 成功
 
 ```json
-{
-  "data": { ... },
-  "error": null,
-  "meta": null
-}
+{ "data": { ... }, "error": null, "meta": null }
 ```
 
-### リスト（ページネーション付き）
+### リスト (ページネーション付き)
 
 ```json
 {
   "data": [ ... ],
   "error": null,
-  "meta": {
-    "total": 123,
-    "limit": 50,
-    "offset": 0
-  }
+  "meta": { "total": 123, "limit": 50, "offset": 0 }
 }
 ```
 
@@ -68,15 +60,13 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
   "error": {
     "code": "VALIDATION_FAILED",
     "message": "title is required",
-    "details": {
-      "field": "title"
-    }
+    "details": { "field": "title" }
   },
   "meta": null
 }
 ```
 
-### エラーコード（Phase 1）
+### エラーコード (Phase 1)
 
 | Code | HTTP | 意味 |
 |---|---|---|
@@ -84,7 +74,7 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
 | `FORBIDDEN` | 403 | 他ユーザーのリソース |
 | `NOT_FOUND` | 404 | リソースなし |
 | `VALIDATION_FAILED` | 400 | 入力バリデーション失敗 |
-| `CONFLICT` | 409 | 状態遷移エラー（例: 既に終了したsliceをend） |
+| `CONFLICT` | 409 | 状態遷移エラー |
 | `RATE_LIMITED` | 429 | レート制限 |
 | `INTERNAL_ERROR` | 500 | サーバーエラー |
 
@@ -93,8 +83,8 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
 | Header | 用途 |
 |---|---|
 | `Authorization` | APIキー |
-| `Content-Type: application/json` | リクエストbody |
-| `X-Request-ID` | リクエスト追跡用（オプション、未指定ならサーバー生成） |
+| `Content-Type: application/json` | リクエスト body |
+| `X-Request-ID` | リクエスト追跡 (任意) |
 
 ## エンドポイント一覧 (Phase 1)
 
@@ -103,7 +93,7 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
 | Method | Path | 認証 | 用途 |
 |---|---|---|---|
 | GET | `/healthz` | 不要 | Liveness |
-| GET | `/readyz` | 不要 | Readiness (DB接続確認) |
+| GET | `/readyz` | 不要 | Readiness (DB ping) |
 
 ### Me
 
@@ -115,61 +105,69 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
 
 | Method | Path | 用途 |
 |---|---|---|
-| GET | `/v1/tasks` | 一覧 (filter: status, q, limit, offset) |
-| POST | `/v1/tasks` | 作成 |
+| GET | `/v1/tasks` | 一覧 (filter: `status`, `category`, `q`, `limit`, `offset`) |
+| POST | `/v1/tasks` | 作成 (category 必須) |
 | GET | `/v1/tasks/{id}` | 取得 |
-| PATCH | `/v1/tasks/{id}` | 更新 |
+| PATCH | `/v1/tasks/{id}` | 更新 (category も変更可) |
 | DELETE | `/v1/tasks/{id}` | ソフト削除 |
 
 ### Work Slices
 
 | Method | Path | 用途 |
 |---|---|---|
-| GET | `/v1/work-slices` | 一覧 (filter: task_id, mode, from, to, limit, offset) |
-| GET | `/v1/work-slices/active` | 現在進行中の slice 一覧 |
-| POST | `/v1/work-slices/start` | 開始 (body: mode, task_id?, note?) |
-| POST | `/v1/work-slices/{id}/end` | 終了 |
-| PATCH | `/v1/work-slices/{id}` | 編集 (mode / note / started_at / ended_at) |
+| GET | `/v1/work-slices` | 一覧 (filter: `task_id`, `mode`, `from`, `to`, `limit`, `offset`) |
+| GET | `/v1/work-slices/active` | 進行中 Slice 一覧 |
+| POST | `/v1/work-slices/start` | 開始 (body: `mode`, `task_id?`, `note?`) |
+| POST | `/v1/work-slices/{id}/end` | 終了 (body: `density?`) |
+| PATCH | `/v1/work-slices/{id}` | 編集 (`mode` / `note` / `density` / `started_at` / `ended_at`) |
 | DELETE | `/v1/work-slices/{id}` | 削除 |
 
 ### Frictions
 
 | Method | Path | 用途 |
 |---|---|---|
-| GET | `/v1/frictions` | 一覧 (filter: task_id, work_slice_id, resolved, kind, from, to) |
-| POST | `/v1/frictions` | 作成 |
-| PATCH | `/v1/frictions/{id}` | 更新（resolve含む） |
+| GET | `/v1/frictions` | 一覧 (filter: `task_id`, `work_slice_id`, `pattern_tag`, `resolved`, `from`, `to`) |
+| POST | `/v1/frictions` | 作成 (`pattern_tag` 必須) |
+| PATCH | `/v1/frictions/{id}` | 更新 (resolve含む) |
 | DELETE | `/v1/frictions/{id}` | 削除 |
 
-### Activity Events (Phase 1は雛形のみ)
+### Insights (新規)
 
 | Method | Path | 用途 |
 |---|---|---|
-| POST | `/v1/activity-events` | bulk ingest (将来CLI Agentから送信) |
+| GET | `/v1/insights` | 一覧 (filter: `task_id`, `friction_id`, `from`, `to`) |
+| POST | `/v1/insights` | 作成 (`after_text` 必須) |
+| PATCH | `/v1/insights/{id}` | 更新 |
+| DELETE | `/v1/insights/{id}` | 削除 |
 
-参照API（list/aggregate）は Phase 2 で追加。
-
-### Reports / Analytics
+### Reports / Analytics (再設計)
 
 | Method | Path | 用途 |
 |---|---|---|
-| GET | `/v1/reports/daily?date=YYYY-MM-DD&tz=Asia/Tokyo` | 日次サマリ |
-| GET | `/v1/reports/range?from=YYYY-MM-DD&to=YYYY-MM-DD&granularity=day\|week&tz=Asia/Tokyo` | 期間集計 |
+| GET | `/v1/reports/today?tz=Asia/Tokyo` | Today 画面用 |
+| GET | `/v1/reports/then-vs-now?category=learning&weeks=4&tz=Asia/Tokyo` | Then vs Now 画面用 |
 
-`tz` を省略した場合は `UTC` で日境界を切る。
+**deprecated** (Phase 1.x で削除):
+- `GET /v1/reports/daily` — `today` に統合の方向
+- `GET /v1/reports/range` — `then-vs-now` に統合の方向
+
+### Activity Events (Phase 1 は雛形のみ、UI には出さない)
+
+| Method | Path | 用途 |
+|---|---|---|
+| POST | `/v1/activity-events` | bulk ingest (将来の CLI Agent 用) |
 
 ## リクエスト例
 
 ### POST /v1/tasks
 
-リクエスト:
-
 ```json
 {
-  "title": "Orbit API skeleton",
-  "description": "chi + pgx setup",
+  "title": "Rails: Devise の current_user スコープ理解",
+  "description": "別の app_id が混入する原因を追う",
+  "category": "learning",
   "status": "in_progress",
-  "external_ref": "https://github.com/riohatta/orbit/issues/1"
+  "external_ref": "https://github.com/example/issues/42"
 }
 ```
 
@@ -179,10 +177,13 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
 {
   "data": {
     "id": "018f3a...",
-    "title": "Orbit API skeleton",
-    "description": "chi + pgx setup",
+    "title": "Rails: Devise の current_user スコープ理解",
+    "category": "learning",
     "status": "in_progress",
-    "external_ref": "https://github.com/riohatta/orbit/issues/1",
+    "description": "...",
+    "external_ref": "...",
+    "started_at": null,
+    "completed_at": null,
     "created_at": "2026-05-30T10:11:12Z",
     "updated_at": "2026-05-30T10:11:12Z"
   },
@@ -193,37 +194,34 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
 
 ### POST /v1/work-slices/start
 
-リクエスト:
-
 ```json
 {
-  "mode": "implement",
+  "mode": "code_explore",
   "task_id": "018f3a...",
-  "note": "API skeleton implementation"
+  "note": "current_user の定義を追跡"
 }
 ```
-
-レスポンス:
 
 ```json
 {
   "data": {
     "id": "018f3b...",
     "task_id": "018f3a...",
-    "mode": "implement",
+    "mode": "code_explore",
     "started_at": "2026-05-30T10:00:00Z",
     "ended_at": null,
     "duration_sec": null,
-    "note": "API skeleton implementation"
+    "density": null,
+    "note": "current_user の定義を追跡"
   }
 }
 ```
 
 ### POST /v1/work-slices/{id}/end
 
-リクエストbody不要。
-
-レスポンス:
+```json
+{ "density": 4 }
+```
 
 ```json
 {
@@ -231,37 +229,46 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
     "id": "018f3b...",
     "started_at": "2026-05-30T10:00:00Z",
     "ended_at": "2026-05-30T10:45:00Z",
-    "duration_sec": 2700
-  }
-}
-```
-
-エラー例（既に終了している場合）:
-
-```json
-{
-  "error": {
-    "code": "CONFLICT",
-    "message": "work slice already ended"
+    "duration_sec": 2700,
+    "density": 4
   }
 }
 ```
 
 ### POST /v1/frictions
 
-リクエスト:
-
 ```json
 {
   "task_id": "018f3a...",
   "work_slice_id": "018f3b...",
-  "kind": "spec_unclear",
+  "pattern_tag": "cant_find",
   "severity": 2,
-  "description": "認証方式の選定で1時間悩んだ"
+  "description": "Devise の current_user がどこで定義されているか分からない"
 }
 ```
 
-### GET /v1/reports/daily?date=2026-05-30&tz=Asia/Tokyo
+### PATCH /v1/frictions/{id} (resolve)
+
+```json
+{
+  "resolution_note": "Devise::Controllers::Helpers#current_user で gem 内で定義されていた"
+}
+```
+
+サーバー側で `resolved_at = now()` を自動セット。
+
+### POST /v1/insights
+
+```json
+{
+  "task_id": "018f3a...",
+  "friction_id": "018f3c...",
+  "before_text": "Rails の helper メソッドは app/helpers にしかないと思っていた",
+  "after_text": "gem も helper を提供する。Devise::Controllers::Helpers が include されて current_user が生える"
+}
+```
+
+### GET /v1/reports/today?tz=Asia/Tokyo
 
 ```json
 {
@@ -269,25 +276,64 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
     "date": "2026-05-30",
     "tz": "Asia/Tokyo",
     "total_seconds": 18000,
+    "active_slice": {
+      "id": "018f3b...",
+      "task_id": "018f3a...",
+      "task_title": "Rails: Devise の current_user スコープ理解",
+      "mode": "code_explore",
+      "started_at": "2026-05-30T10:00:00Z"
+    },
     "by_mode": {
-      "implement": 7200,
-      "explore": 3600,
-      "spec": 1800,
-      "debug": 5400
+      "code_explore": 7200,
+      "implement":    4500,
+      "spec_read":    1800,
+      "debug":        2700,
+      "ai_review":    1800
     },
     "slice_count": 12,
     "friction_count": 4,
     "unresolved_friction_count": 2,
-    "tasks": [
-      {"id": "018f3a...", "title": "Orbit API skeleton", "seconds": 12600}
-    ]
+    "insight_count": 3
   }
 }
 ```
 
-### POST /v1/activity-events
+### GET /v1/reports/then-vs-now?category=learning&weeks=4&tz=Asia/Tokyo
 
-リクエスト（bulk）:
+```json
+{
+  "data": {
+    "category": "learning",
+    "tz": "Asia/Tokyo",
+    "weeks": ["2026-W18", "2026-W19", "2026-W20", "2026-W21"],
+    "mode_minutes": {
+      "code_explore": [180, 150, 90,  45],
+      "spec_read":    [ 45,  30, 25,  20],
+      "implement":    [ 60,  75, 80,  90],
+      "ai_review":    [ 10,  15, 20,  25],
+      "debug":        [ 30,  20, 15,  10]
+    },
+    "pattern_resolution_minutes": {
+      "cant_find":        { "last_7d_avg": 12, "prev_23d_avg": 38, "n_30d": 8, "trend": "improving" },
+      "unexpected_state": { "last_7d_avg": 18, "prev_23d_avg": 22, "n_30d": 5, "trend": "flat" },
+      "type_mismatch":    { "last_7d_avg":  8, "prev_23d_avg": 18, "n_30d": 6, "trend": "improving" }
+    },
+    "insights_this_week": [
+      {
+        "id": "018f3d...",
+        "after_text": "Rails の concerns は ActiveSupport::Concern を使えば mixin として使える",
+        "created_at": "2026-05-29T14:30:00Z"
+      }
+    ],
+    "insufficient_data_patterns": ["api_contract", "flaky_test"]
+  }
+}
+```
+
+`insufficient_data_patterns` は `n_30d < 3` のため数値を出さなかった pattern_tag リスト。
+UI は「あと N件で表示」と出す根拠にする (プロダクト原則 4: N が少ない時は数値を出さない)。
+
+### POST /v1/activity-events (Phase 1 は ingest 雛形のみ)
 
 ```json
 {
@@ -296,20 +342,9 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
       "occurred_at": "2026-05-30T10:00:00Z",
       "source": "local-agent-mac/0.1.0",
       "event_type": "app.focus",
-      "payload": {"app_name": "VSCode", "window_title": "main.go"}
+      "payload": { "app_name": "VSCode", "window_title": "main.go" }
     }
   ]
-}
-```
-
-レスポンス:
-
-```json
-{
-  "data": {
-    "accepted": 1,
-    "rejected": 0
-  }
 }
 ```
 
@@ -317,23 +352,30 @@ GitHub OAuth を予定（[ROADMAP.md](./ROADMAP.md) 参照）
 
 | Endpoint | 制限 |
 |---|---|
-| `POST /v1/activity-events` | 1000 req/min per user (Phase 2準備) |
+| `POST /v1/activity-events` | 1000 req/min per user |
 | その他 | 300 req/min per user |
 
 超過時: `429` + `Retry-After` ヘッダ
 
-実装方針: Phase 1はメモリ内 token bucket でも可。Phase 2でRedis等に移行。
+実装方針: Phase 1 はメモリ内 token bucket。Phase 2 で Redis に移行。
 
 ## CORS
 
-- 許可Origin: `https://app.orbit.example.com` (本番), `http://localhost:5173` (Vite dev)
-- 許可Headers: `Authorization`, `Content-Type`, `X-Request-ID`
-- 許可Methods: `GET, POST, PATCH, DELETE, OPTIONS`
+- 許可 Origin: `https://app.orbit.example.com` (本番), `http://localhost:5173` (Vite dev)
+- 許可 Headers: `Authorization`, `Content-Type`, `X-Request-ID`
+- 許可 Methods: `GET, POST, PATCH, DELETE, OPTIONS`
 
 ## バリデーション原則
 
-- 文字列の長さ上限を必ず設定（[DATA_MODEL.md](./DATA_MODEL.md) のカラム制約に従う）
-- enum値はサーバー側で厳格チェック
-- 不明フィールドは無視（厳格rejectしない）
+- 文字列長の上限は必ず設定 (DATA_MODEL.md のカラム制約に従う)
+- enum 値はサーバー側で厳格チェック (許可リスト外は `VALIDATION_FAILED`)
+- 不明フィールドは無視 (厳格 reject しない)
 - 日時は ISO 8601 / RFC 3339 形式のみ受け付ける
-- ページネーション: `limit` デフォルト 50, 最大 200
+- ページネーション: `limit` デフォルト 50、最大 200
+
+## DTO 設計原則
+
+- ドメイン型 (`internal/domain/task.Task`) と HTTP DTO (`internal/httpapi/handlers/taskDTO`) は別物
+- DB 変更 (列追加など) が API 互換を即破壊しないように DTO 層で吸収する
+- DTO ⇔ Domain 変換は handler 内に閉じる (service は domain しか知らない)
+- 集計クエリは **ReportService に集約**、handler から直接 SQL を書かない

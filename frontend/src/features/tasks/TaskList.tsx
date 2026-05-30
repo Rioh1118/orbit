@@ -1,5 +1,5 @@
 import { useDeleteTask, useTasks, useUpdateTask } from "./hooks";
-import type { TaskStatus } from "./types";
+import { TASK_CATEGORIES, type TaskCategory, type TaskStatus } from "./types";
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   open: "未着手",
@@ -8,6 +8,14 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   done: "完了",
   archived: "アーカイブ",
 };
+
+const CATEGORY_LABEL: Record<TaskCategory, string> = TASK_CATEGORIES.reduce(
+  (acc, c) => {
+    acc[c.value] = c.label;
+    return acc;
+  },
+  {} as Record<TaskCategory, string>,
+);
 
 export function TaskList() {
   const { data, isLoading, error } = useTasks();
@@ -29,10 +37,30 @@ export function TaskList() {
             >
               {t.title}
             </p>
-            {t.description && (
-              <p className="truncate text-xs text-neutral-500">{t.description}</p>
-            )}
+            <p className="truncate text-xs text-neutral-500">
+              <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-300">
+                {CATEGORY_LABEL[t.category] ?? t.category}
+              </span>
+              {t.description && <span className="ml-2">{t.description}</span>}
+            </p>
           </div>
+          <select
+            value={t.category}
+            onChange={(e) =>
+              update.mutate({
+                id: t.id,
+                input: { category: e.target.value as TaskCategory },
+              })
+            }
+            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs"
+            aria-label="カテゴリ変更"
+          >
+            {TASK_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
           <select
             value={t.status}
             onChange={(e) =>

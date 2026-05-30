@@ -24,7 +24,7 @@ type Friction struct {
 	UserID         pgtype.UUID        `json:"user_id"`
 	TaskID         pgtype.UUID        `json:"task_id"`
 	WorkSliceID    pgtype.UUID        `json:"work_slice_id"`
-	Kind           string             `json:"kind"`
+	Kind           *string            `json:"kind"`
 	Severity       int32              `json:"severity"`
 	Description    string             `json:"description"`
 	ResolvedAt     pgtype.Timestamptz `json:"resolved_at"`
@@ -32,6 +32,7 @@ type Friction struct {
 	Metadata       []byte             `json:"metadata"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	PatternTag     string             `json:"pattern_tag"`
 }
 
 type Task struct {
@@ -47,6 +48,7 @@ type Task struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	Category    string             `json:"category"`
 }
 
 type User struct {
@@ -71,4 +73,5 @@ type WorkSlice struct {
 	Metadata    []byte             `json:"metadata"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Density     *int32             `json:"density"`
 }
