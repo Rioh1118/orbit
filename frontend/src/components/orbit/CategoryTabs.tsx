@@ -24,7 +24,8 @@ export function CategoryTabs({ value, onChange }: CategoryTabsProps) {
             key={c.value}
             type="button"
             onClick={() => onChange(c.value)}
-            className={`px-3 py-2 font-mono text-xs uppercase tracking-instrument transition-colors ${
+            aria-pressed={active}
+            className={`px-3 py-2 text-sm transition-colors ${
               active
                 ? "-mb-px border-b-2 border-parchment text-parchment"
                 : "text-mist hover:text-parchment"

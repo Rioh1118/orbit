@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { KeyCap } from "@/components/ui/KeyCap";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { useTasks } from "@/features/tasks/hooks";
 import { useStartSlice } from "./hooks";
 import {
@@ -43,10 +44,7 @@ export function ModeSelector({ disabled }: Props) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <label
-            htmlFor="slice-task"
-            className="font-mono text-xs uppercase tracking-instrument text-mist"
-          >
+          <label htmlFor="slice-task" className="text-xs font-medium text-mist">
             task
           </label>
           <select
@@ -64,16 +62,14 @@ export function ModeSelector({ disabled }: Props) {
           </select>
         </div>
         <div className="flex items-center gap-1">
-          <span className="font-mono text-xs uppercase tracking-instrument text-mist">
-            driver
-          </span>
+          <span className="text-xs font-medium text-mist">driver</span>
           {SLICE_DRIVERS.map((d) => (
             <button
               key={d.value}
               type="button"
               onClick={() => setDriver(d.value)}
               aria-pressed={driver === d.value}
-              className={`rounded border px-2 py-1 font-mono text-xs uppercase tracking-instrument ${
+              className={`rounded border px-2 py-1 text-xs ${
                 driver === d.value
                   ? "border-instrument bg-elevated text-parchment"
                   : "border-instrument/30 bg-surface text-mist hover:text-parchment"
@@ -84,7 +80,7 @@ export function ModeSelector({ disabled }: Props) {
           ))}
         </div>
       </div>
-      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {SLICE_MODES.map((m) => (
           <li key={m.value}>
             <button
@@ -95,16 +91,12 @@ export function ModeSelector({ disabled }: Props) {
               aria-label={`start ${m.label}`}
             >
               <KeyCap k={m.key} size="sm" />
-              <span className="font-mono text-xs uppercase tracking-instrument text-mist">
-                {m.label}
-              </span>
+              <span className="text-xs text-mist">{m.label}</span>
             </button>
           </li>
         ))}
       </ul>
-      {start.error && (
-        <p className="text-xs text-danger">{(start.error as Error).message}</p>
-      )}
+      {start.error && <ErrorText>{(start.error as Error).message}</ErrorText>}
     </div>
   );
 }

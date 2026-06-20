@@ -2,7 +2,7 @@ import type { SliceMode } from "@/features/slices/types";
 
 export const chartTheme = {
   axis: { stroke: "var(--color-mist)", fontSize: 11 },
-  grid: { stroke: "var(--color-instrument)", opacity: 0.2 },
+  grid: { stroke: "var(--color-instrument)", opacity: 0.18 },
   tooltipStyle: {
     background: "var(--color-surface)",
     border: "1px solid var(--color-instrument)",
@@ -10,6 +10,11 @@ export const chartTheme = {
     fontSize: 12,
     color: "var(--color-parchment)",
   } as const,
+  // Force tooltip text to high-contrast parchment. Recharts otherwise colors each item by
+  // its series color, and mid-tone series (e.g. instrument #547792) are unreadable on the
+  // surface tooltip background (WCAG 1.4.3). The color swatch still identifies the series.
+  tooltipItemStyle: { color: "var(--color-parchment)" } as const,
+  tooltipLabelStyle: { color: "var(--color-mist)" } as const,
 };
 
 // Record<SliceMode, string> forces exhaustiveness: a new mode is a compile error

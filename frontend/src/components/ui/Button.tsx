@@ -9,7 +9,7 @@ const base =
   "inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";
 
 const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  primary: "bg-instrument text-parchment hover:bg-instrument/85",
+  primary: "border border-instrument bg-elevated text-parchment hover:border-mist",
   ghost: "text-mist hover:bg-instrument/20 hover:text-parchment",
 };
 

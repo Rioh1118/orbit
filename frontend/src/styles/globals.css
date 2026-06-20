@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;0,500;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -30,20 +30,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at top left, rgba(84, 119, 146, 0.18), transparent 55%),
-    radial-gradient(ellipse at bottom right, rgba(148, 180, 193, 0.06), transparent 60%);
-  z-index: 0;
-}
-
-#root {
-  position: relative;
-  z-index: 1;
+@layer base {
+  /* Visible keyboard focus on every interactive element (WCAG 2.4.7 Focus Visible /
+     1.4.11 Non-text Contrast). mist gives 5.79:1 on canvas — well above the 3:1 floor;
+     instrument would fail at 2.69:1. :where() keeps specificity 0 so a component can
+     still opt out deliberately. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-mist);
+    outline-offset: 2px;
+  }
 }
 
 ::selection {

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ModeBar } from "@/components/orbit/ModeBar";
 import { StatTile } from "@/components/orbit/StatTile";
 import { Divider } from "@/components/ui/Divider";
+import { ErrorText } from "@/components/ui/ErrorText";
+import { KeyCap } from "@/components/ui/KeyCap";
 import { ActiveSliceCard } from "@/features/slices/ActiveSliceCard";
 import { ModeSelector } from "@/features/slices/ModeSelector";
 import { useSlices } from "@/features/slices/hooks";
@@ -117,21 +119,15 @@ export default function TodayPage() {
         <Divider label="today / modes" />
         <div className="mt-5">
           {isLoading && <p className="text-sm text-mist">loading…</p>}
-          {error && (
-            <p className="text-sm text-danger">
-              error: {(error as Error).message}
-            </p>
-          )}
+          {error && <ErrorText>{(error as Error).message}</ErrorText>}
           {!isLoading && !error && modeSlices.length === 0 && (
-            <p className="font-mono text-xs uppercase tracking-instrument text-mist">
-              no work segments today yet
-            </p>
+            <p className="text-sm text-mist">no work segments today yet</p>
           )}
           {modeSlices.length > 0 && <ModeBar slices={modeSlices} />}
         </div>
       </section>
 
-      <section className="grid grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile label="focus" value={formatHM(totalSec)} hint="today" />
         <StatTile label="segments" value={workCount} hint="today" />
         <StatTile label="frictions" value={openCount} hint="open" />
@@ -139,16 +135,14 @@ export default function TodayPage() {
 
       <section>
         <Divider label="friction log" />
-        <div className="mt-3 flex items-center justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-instrument text-mist">
-            press{" "}
-            <kbd className="rounded border border-instrument/40 px-1">f</kbd> to
-            record
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="flex items-center gap-1.5 text-xs text-mist">
+            press <KeyCap k="f" size="sm" /> to record
           </p>
           <button
             type="button"
             onClick={() => setFrictionOpen(true)}
-            className="rounded border border-instrument/40 bg-surface px-3 py-1 text-sm text-parchment hover:border-instrument"
+            className="rounded-md border border-instrument/40 bg-surface px-3 py-1 text-sm text-parchment transition-colors hover:border-instrument"
           >
             + friction
           </button>

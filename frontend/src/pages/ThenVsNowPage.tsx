@@ -6,6 +6,7 @@ import {
   type WeekPoint,
 } from "@/components/orbit/ThenVsNowChart";
 import { Divider } from "@/components/ui/Divider";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { StatTile } from "@/components/orbit/StatTile";
 import { chartTheme } from "@/lib/chartTheme";
 import { useThenVsNow } from "@/features/reports/hooks";
@@ -95,10 +96,8 @@ export default function ThenVsNowPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <header>
-        <p className="font-mono text-xs uppercase tracking-instrument text-mist">
-          then · vs · now
-        </p>
-        <h1 className="mt-2 font-serif text-2xl text-parchment">
+        <p className="text-xs font-medium text-mist">then · vs · now</p>
+        <h1 className="mt-2 text-2xl font-semibold text-parchment">
           同じ作業、前より速く解けるようになった?
         </h1>
       </header>
@@ -106,12 +105,10 @@ export default function ThenVsNowPage() {
       <CategoryTabs value={category} onChange={setCategory} />
 
       {isLoading && <p className="text-sm text-mist">loading…</p>}
-      {error && (
-        <p className="text-sm text-danger">error: {(error as Error).message}</p>
-      )}
+      {error && <ErrorText>{(error as Error).message}</ErrorText>}
 
       {!isLoading && !error && points.length < MIN_WEEKS_FOR_SIGNAL && (
-        <p className="font-mono text-xs uppercase tracking-instrument text-mist">
+        <p className="text-sm text-mist">
           データ不足 — あと {MIN_WEEKS_FOR_SIGNAL - points.length}{" "}
           週分で推移を表示します
         </p>
@@ -126,7 +123,7 @@ export default function ThenVsNowPage() {
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-3">
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <StatTile
               label="code explore share"
               value={shareDelta("code_explore")}
@@ -142,7 +139,7 @@ export default function ThenVsNowPage() {
           <section>
             <Divider label="completion time / task (min)" />
             {completionSeries.length < MIN_WEEKS_FOR_SIGNAL ? (
-              <p className="mt-4 font-mono text-xs uppercase tracking-instrument text-mist">
+              <p className="mt-4 text-sm text-mist">
                 データ不足 — 完了タスクが足りません
               </p>
             ) : (
@@ -172,7 +169,7 @@ export default function ThenVsNowPage() {
 
           <section>
             <Divider label="frictions / this window" />
-            <p className="mt-4 font-mono text-sm text-parchment">
+            <p className="mt-4 text-sm text-parchment">
               {frictionSummary.total} 件
               {frictionSummary.detail && (
                 <span className="ml-2 text-xs text-mist">

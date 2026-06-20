@@ -1,4 +1,5 @@
 import { FrictionItem } from "@/components/orbit/FrictionItem";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { useFrictions, useUpdateFriction, useDeleteFriction } from "./hooks";
 
 interface Props {
@@ -12,15 +13,10 @@ export function FrictionLog({ limit = 20, resolved }: Props) {
   const remove = useDeleteFriction();
 
   if (isLoading) return <p className="text-sm text-mist">loading…</p>;
-  if (error)
-    return <p className="text-sm text-danger">error: {(error as Error).message}</p>;
+  if (error) return <ErrorText>{(error as Error).message}</ErrorText>;
   const rows = data?.data ?? [];
   if (rows.length === 0) {
-    return (
-      <p className="font-mono text-xs uppercase tracking-instrument text-mist">
-        no frictions recorded
-      </p>
-    );
+    return <p className="text-sm text-mist">no frictions recorded</p>;
   }
 
   return (
@@ -34,12 +30,14 @@ export function FrictionLog({ limit = 20, resolved }: Props) {
               resolved={f.resolved_at != null}
             />
           </div>
-          <div className="flex shrink-0 gap-1">
+          <div className="flex shrink-0 gap-2">
             {!f.resolved_at && (
               <button
                 type="button"
-                onClick={() => update.mutate({ id: f.id, input: { resolved: true } })}
-                className="font-mono text-[10px] uppercase tracking-instrument text-mist hover:text-growth"
+                onClick={() =>
+                  update.mutate({ id: f.id, input: { resolved: true } })
+                }
+                className="text-xs text-mist transition-colors hover:text-growth"
                 aria-label="resolve"
               >
                 resolve
@@ -48,7 +46,7 @@ export function FrictionLog({ limit = 20, resolved }: Props) {
             <button
               type="button"
               onClick={() => remove.mutate(f.id)}
-              className="font-mono text-[10px] uppercase tracking-instrument text-mist hover:text-danger"
+              className="text-xs text-mist transition-colors hover:text-danger"
               aria-label="delete"
             >
               ×

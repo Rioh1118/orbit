@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { KeyCap } from "@/components/ui/KeyCap";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { useCurrentSlice } from "@/features/slices/hooks";
 import { useCreateFriction } from "./hooks";
 import {
@@ -18,29 +19,30 @@ export function FrictionModal({ open, onClose }: Props) {
   const { data: current } = useCurrentSlice();
   const [tag, setTag] = useState<FrictionPatternTag | null>(null);
   const [description, setDescription] = useState("");
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Reset on open and focus the description.
+  // Drive the native <dialog> from the `open` prop. showModal() gives focus trapping,
+  // an inert background, ESC-to-close, and focus restoration for free — the WAI-ARIA APG
+  // dialog pattern handled by the platform instead of hand-rolled JS.
   useEffect(() => {
-    if (open) {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
       setTag(null);
       setDescription("");
-      // Defer focus to after render.
       queueMicrotask(() => inputRef.current?.focus());
+    } else if (!open && dialog.open) {
+      dialog.close();
     }
   }, [open]);
 
-  // Tag shortcuts work even while typing; we only react when Alt is held.
+  // Quick tag selection with Alt+key while the dialog is open.
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-      if (!e.altKey) return;
-      if (e.metaKey || e.ctrlKey) return;
+      if (!e.altKey || e.metaKey || e.ctrlKey) return;
       const mapped = PATTERN_TAG_BY_KEY[e.key];
       if (mapped) {
         e.preventDefault();
@@ -49,9 +51,7 @@ export function FrictionModal({ open, onClose }: Props) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [open]);
 
   const activeSlice = current ?? undefined;
 
@@ -65,28 +65,30 @@ export function FrictionModal({ open, onClose }: Props) {
       work_slice_id: activeSlice?.id ?? null,
       task_id: activeSlice?.task_id ?? null,
     });
-    onClose();
+    dialogRef.current?.close();
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="record friction"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-canvas/80 px-4 py-12 backdrop-blur-sm"
+    <dialog
+      ref={dialogRef}
+      onClose={onClose}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        // A click whose target is the dialog itself is a backdrop click (content lives
+        // in the child <form>), so dismiss.
+        if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
+      aria-labelledby="friction-modal-title"
+      className="m-auto w-full max-w-xl rounded-md border border-instrument/40 bg-surface p-0 text-parchment backdrop:bg-canvas/70"
     >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-xl space-y-4 rounded-md border border-instrument/40 bg-surface p-5 shadow-glow"
-      >
-        <header className="flex items-baseline justify-between">
-          <h2 className="font-mono text-xs uppercase tracking-instrument text-mist">
+      <form onSubmit={handleSubmit} className="space-y-4 p-5">
+        <header className="flex items-baseline justify-between gap-3">
+          <h2
+            id="friction-modal-title"
+            className="text-sm font-medium text-parchment"
+          >
             record friction
           </h2>
-          <span className="font-mono text-[10px] uppercase tracking-instrument text-mist">
+          <span className="text-xs text-mist">
             esc to close · alt+1-9,0,a to tag
           </span>
         </header>
@@ -99,14 +101,12 @@ export function FrictionModal({ open, onClose }: Props) {
           rows={3}
           maxLength={2000}
           required
-          className="w-full rounded border border-instrument/40 bg-canvas px-3 py-2 text-sm text-parchment focus:border-instrument focus:outline-none"
+          className="w-full rounded border border-instrument/40 bg-canvas px-3 py-2 text-sm text-parchment focus:border-instrument"
           aria-label="friction description"
         />
 
         <fieldset className="space-y-2">
-          <legend className="font-mono text-xs uppercase tracking-instrument text-mist">
-            pattern_tag
-          </legend>
+          <legend className="text-sm font-medium text-mist">pattern_tag</legend>
           <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {PATTERN_TAGS.map((p) => {
               const active = tag === p.value;
@@ -116,7 +116,7 @@ export function FrictionModal({ open, onClose }: Props) {
                     type="button"
                     onClick={() => setTag(p.value)}
                     aria-pressed={active}
-                    className={`flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm hover:border-instrument ${
+                    className={`flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm transition-colors hover:border-instrument ${
                       active
                         ? "border-instrument bg-elevated text-parchment"
                         : "border-instrument/30 bg-canvas text-parchment-muted"
@@ -131,8 +131,8 @@ export function FrictionModal({ open, onClose }: Props) {
           </ul>
         </fieldset>
 
-        <div className="flex items-center justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-instrument text-mist">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-mist">
             {activeSlice
               ? `linked to current segment (${activeSlice.mode || activeSlice.off_reason})`
               : "no current segment — friction will be unlinked"}
@@ -140,8 +140,8 @@ export function FrictionModal({ open, onClose }: Props) {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={onClose}
-              className="rounded px-3 py-1 font-mono text-xs uppercase tracking-instrument text-mist hover:text-parchment"
+              onClick={() => dialogRef.current?.close()}
+              className="rounded px-3 py-1 text-sm text-mist transition-colors hover:text-parchment"
             >
               cancel
             </button>
@@ -156,11 +156,9 @@ export function FrictionModal({ open, onClose }: Props) {
         </div>
 
         {create.error && (
-          <p className="text-xs text-danger">
-            {(create.error as Error).message}
-          </p>
+          <ErrorText>{(create.error as Error).message}</ErrorText>
         )}
       </form>
-    </div>
+    </dialog>
   );
 }
