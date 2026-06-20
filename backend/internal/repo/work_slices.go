@@ -72,6 +72,18 @@ func (r *WorkSliceRepo) ListActive(ctx context.Context, userID uuid.UUID) ([]*wo
 	return rowsToWorkSlices(rows), nil
 }
 
+// GetOpen returns the single currently-open segment, or (nil, nil) if none.
+func (r *WorkSliceRepo) GetOpen(ctx context.Context, userID uuid.UUID) (*workslice.WorkSlice, error) {
+	row, err := r.q.GetOpenWorkSlice(ctx, toPgUUID(userID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get open work slice: %w", err)
+	}
+	return rowToWorkSlice(row), nil
+}
+
 func (r *WorkSliceRepo) Get(ctx context.Context, id, userID uuid.UUID) (*workslice.WorkSlice, error) {
 	row, err := r.q.GetWorkSlice(ctx, sqlcgen.GetWorkSliceParams{
 		ID:     toPgUUID(id),
@@ -91,7 +103,10 @@ func (r *WorkSliceRepo) Create(ctx context.Context, w *workslice.WorkSlice) (*wo
 		ID:        toPgUUID(w.ID),
 		UserID:    toPgUUID(w.UserID),
 		TaskID:    toPgUUIDPtr(w.TaskID),
-		Mode:      string(w.Mode),
+		Type:      string(w.Type),
+		Mode:      strToPtr(string(w.Mode)),
+		Driver:    strToPtr(string(w.Driver)),
+		OffReason: strToPtr(string(w.OffReason)),
 		StartedAt: toPgTime(w.StartedAt),
 		Note:      strToPtr(w.Note),
 	})
@@ -105,12 +120,13 @@ func (r *WorkSliceRepo) Update(ctx context.Context, w *workslice.WorkSlice) (*wo
 	row, err := r.q.UpdateWorkSlice(ctx, sqlcgen.UpdateWorkSliceParams{
 		ID:          toPgUUID(w.ID),
 		UserID:      toPgUUID(w.UserID),
-		Mode:        string(w.Mode),
 		TaskID:      toPgUUIDPtr(w.TaskID),
+		Mode:        strToPtr(string(w.Mode)),
+		Driver:      strToPtr(string(w.Driver)),
+		OffReason:   strToPtr(string(w.OffReason)),
 		StartedAt:   toPgTime(w.StartedAt),
 		EndedAt:     toPgTimePtr(w.EndedAt),
 		DurationSec: intPtrToInt32Ptr(w.DurationSec),
-		Density:     intPtrToInt32Ptr(w.Density),
 		Note:        strToPtr(w.Note),
 	})
 	if err != nil {
@@ -132,9 +148,9 @@ func (r *WorkSliceRepo) Delete(ctx context.Context, id, userID uuid.UUID) error 
 	return nil
 }
 
-// SumByMode returns total seconds per mode for ended slices in [from, to).
+// SumByMode returns total seconds per mode for ended WORK segments in [from, to).
 func (r *WorkSliceRepo) SumByMode(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[workslice.Mode]int64, error) {
-	rows, err := r.q.SumWorkSlicesByModeInRange(ctx, sqlcgen.SumWorkSlicesByModeInRangeParams{
+	rows, err := r.q.SumWorkModeInRange(ctx, sqlcgen.SumWorkModeInRangeParams{
 		UserID:      toPgUUID(userID),
 		StartedAt:   toPgTime(from),
 		StartedAt_2: toPgTime(to),
@@ -143,8 +159,11 @@ func (r *WorkSliceRepo) SumByMode(ctx context.Context, userID uuid.UUID, from, t
 		return nil, fmt.Errorf("sum work slices by mode: %w", err)
 	}
 	out := make(map[workslice.Mode]int64, len(rows))
-	for _, r := range rows {
-		out[workslice.Mode(r.Mode)] = r.TotalSeconds
+	for _, row := range rows {
+		if row.Mode == nil {
+			continue
+		}
+		out[workslice.Mode(*row.Mode)] = row.TotalSeconds
 	}
 	return out, nil
 }
@@ -154,11 +173,13 @@ func rowToWorkSlice(r sqlcgen.WorkSlice) *workslice.WorkSlice {
 		ID:          uuid.UUID(r.ID.Bytes),
 		UserID:      uuid.UUID(r.UserID.Bytes),
 		TaskID:      pgUUIDToPtr(r.TaskID),
-		Mode:        workslice.Mode(r.Mode),
+		Type:        workslice.Type(r.Type),
+		Mode:        workslice.Mode(ptrToStr(r.Mode)),
+		Driver:      workslice.Driver(ptrToStr(r.Driver)),
+		OffReason:   workslice.OffReason(ptrToStr(r.OffReason)),
 		StartedAt:   r.StartedAt.Time,
 		EndedAt:     pgTimeToPtr(r.EndedAt),
 		DurationSec: int32PtrToIntPtr(r.DurationSec),
-		Density:     int32PtrToIntPtr(r.Density),
 		Note:        ptrToStr(r.Note),
 		CreatedAt:   r.CreatedAt.Time,
 		UpdatedAt:   r.UpdatedAt.Time,

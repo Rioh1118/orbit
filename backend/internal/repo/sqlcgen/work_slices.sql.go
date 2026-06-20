@@ -42,16 +42,19 @@ func (q *Queries) CountWorkSlices(ctx context.Context, arg CountWorkSlicesParams
 }
 
 const createWorkSlice = `-- name: CreateWorkSlice :one
-INSERT INTO work_slices (id, user_id, task_id, mode, started_at, note)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, density
+INSERT INTO work_slices (id, user_id, task_id, type, mode, driver, off_reason, started_at, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, type, driver, off_reason
 `
 
 type CreateWorkSliceParams struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`
 	TaskID    pgtype.UUID        `json:"task_id"`
-	Mode      string             `json:"mode"`
+	Type      string             `json:"type"`
+	Mode      *string            `json:"mode"`
+	Driver    *string            `json:"driver"`
+	OffReason *string            `json:"off_reason"`
 	StartedAt pgtype.Timestamptz `json:"started_at"`
 	Note      *string            `json:"note"`
 }
@@ -61,7 +64,10 @@ func (q *Queries) CreateWorkSlice(ctx context.Context, arg CreateWorkSliceParams
 		arg.ID,
 		arg.UserID,
 		arg.TaskID,
+		arg.Type,
 		arg.Mode,
+		arg.Driver,
+		arg.OffReason,
 		arg.StartedAt,
 		arg.Note,
 	)
@@ -78,7 +84,9 @@ func (q *Queries) CreateWorkSlice(ctx context.Context, arg CreateWorkSliceParams
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Density,
+		&i.Type,
+		&i.Driver,
+		&i.OffReason,
 	)
 	return i, err
 }
@@ -97,8 +105,38 @@ func (q *Queries) DeleteWorkSlice(ctx context.Context, arg DeleteWorkSliceParams
 	return err
 }
 
+const getOpenWorkSlice = `-- name: GetOpenWorkSlice :one
+SELECT id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, type, driver, off_reason FROM work_slices
+WHERE user_id = $1 AND ended_at IS NULL
+ORDER BY started_at DESC
+LIMIT 1
+`
+
+// The single currently-open segment (state machine: at most one per user).
+func (q *Queries) GetOpenWorkSlice(ctx context.Context, userID pgtype.UUID) (WorkSlice, error) {
+	row := q.db.QueryRow(ctx, getOpenWorkSlice, userID)
+	var i WorkSlice
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TaskID,
+		&i.Mode,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.DurationSec,
+		&i.Note,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Type,
+		&i.Driver,
+		&i.OffReason,
+	)
+	return i, err
+}
+
 const getWorkSlice = `-- name: GetWorkSlice :one
-SELECT id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, density FROM work_slices
+SELECT id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, type, driver, off_reason FROM work_slices
 WHERE id = $1 AND user_id = $2
 LIMIT 1
 `
@@ -123,13 +161,15 @@ func (q *Queries) GetWorkSlice(ctx context.Context, arg GetWorkSliceParams) (Wor
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Density,
+		&i.Type,
+		&i.Driver,
+		&i.OffReason,
 	)
 	return i, err
 }
 
 const listActiveWorkSlices = `-- name: ListActiveWorkSlices :many
-SELECT id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, density FROM work_slices
+SELECT id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, type, driver, off_reason FROM work_slices
 WHERE user_id = $1 AND ended_at IS NULL
 ORDER BY started_at DESC
 `
@@ -155,7 +195,9 @@ func (q *Queries) ListActiveWorkSlices(ctx context.Context, userID pgtype.UUID) 
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Density,
+			&i.Type,
+			&i.Driver,
+			&i.OffReason,
 		); err != nil {
 			return nil, err
 		}
@@ -168,7 +210,7 @@ func (q *Queries) ListActiveWorkSlices(ctx context.Context, userID pgtype.UUID) 
 }
 
 const listWorkSlices = `-- name: ListWorkSlices :many
-SELECT id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, density FROM work_slices
+SELECT id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, type, driver, off_reason FROM work_slices
 WHERE user_id = $1
   AND ($4::uuid IS NULL OR task_id = $4)
   AND ($5::text IS NULL OR mode = $5)
@@ -217,7 +259,9 @@ func (q *Queries) ListWorkSlices(ctx context.Context, arg ListWorkSlicesParams) 
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Density,
+			&i.Type,
+			&i.Driver,
+			&i.OffReason,
 		); err != nil {
 			return nil, err
 		}
@@ -229,38 +273,38 @@ func (q *Queries) ListWorkSlices(ctx context.Context, arg ListWorkSlicesParams) 
 	return items, nil
 }
 
-const sumWorkSlicesByModeInRange = `-- name: SumWorkSlicesByModeInRange :many
+const sumWorkModeInRange = `-- name: SumWorkModeInRange :many
 SELECT mode, COALESCE(SUM(duration_sec), 0)::bigint AS total_seconds
 FROM work_slices
 WHERE user_id = $1
+  AND type = 'work'
+  AND ended_at IS NOT NULL
   AND started_at >= $2
   AND started_at < $3
-  AND ended_at IS NOT NULL
 GROUP BY mode
 `
 
-type SumWorkSlicesByModeInRangeParams struct {
+type SumWorkModeInRangeParams struct {
 	UserID      pgtype.UUID        `json:"user_id"`
 	StartedAt   pgtype.Timestamptz `json:"started_at"`
 	StartedAt_2 pgtype.Timestamptz `json:"started_at_2"`
 }
 
-type SumWorkSlicesByModeInRangeRow struct {
-	Mode         string `json:"mode"`
-	TotalSeconds int64  `json:"total_seconds"`
+type SumWorkModeInRangeRow struct {
+	Mode         *string `json:"mode"`
+	TotalSeconds int64   `json:"total_seconds"`
 }
 
-// Sum durations by mode for ended slices within [from, to).
-// Treats in-progress slices (ended_at NULL) as 0 to keep the query stable.
-func (q *Queries) SumWorkSlicesByModeInRange(ctx context.Context, arg SumWorkSlicesByModeInRangeParams) ([]SumWorkSlicesByModeInRangeRow, error) {
-	rows, err := q.db.Query(ctx, sumWorkSlicesByModeInRange, arg.UserID, arg.StartedAt, arg.StartedAt_2)
+// Today distribution: total work seconds per mode for ended WORK segments in [from, to).
+func (q *Queries) SumWorkModeInRange(ctx context.Context, arg SumWorkModeInRangeParams) ([]SumWorkModeInRangeRow, error) {
+	rows, err := q.db.Query(ctx, sumWorkModeInRange, arg.UserID, arg.StartedAt, arg.StartedAt_2)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []SumWorkSlicesByModeInRangeRow{}
+	items := []SumWorkModeInRangeRow{}
 	for rows.Next() {
-		var i SumWorkSlicesByModeInRangeRow
+		var i SumWorkModeInRangeRow
 		if err := rows.Scan(&i.Mode, &i.TotalSeconds); err != nil {
 			return nil, err
 		}
@@ -274,27 +318,29 @@ func (q *Queries) SumWorkSlicesByModeInRange(ctx context.Context, arg SumWorkSli
 
 const updateWorkSlice = `-- name: UpdateWorkSlice :one
 UPDATE work_slices
-SET mode = $3,
-    task_id = $4,
-    started_at = $5,
-    ended_at = $6,
-    duration_sec = $7,
-    density = $8,
-    note = $9,
+SET task_id = $3,
+    mode = $4,
+    driver = $5,
+    off_reason = $6,
+    started_at = $7,
+    ended_at = $8,
+    duration_sec = $9,
+    note = $10,
     updated_at = now()
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, density
+RETURNING id, user_id, task_id, mode, started_at, ended_at, duration_sec, note, metadata, created_at, updated_at, type, driver, off_reason
 `
 
 type UpdateWorkSliceParams struct {
 	ID          pgtype.UUID        `json:"id"`
 	UserID      pgtype.UUID        `json:"user_id"`
-	Mode        string             `json:"mode"`
 	TaskID      pgtype.UUID        `json:"task_id"`
+	Mode        *string            `json:"mode"`
+	Driver      *string            `json:"driver"`
+	OffReason   *string            `json:"off_reason"`
 	StartedAt   pgtype.Timestamptz `json:"started_at"`
 	EndedAt     pgtype.Timestamptz `json:"ended_at"`
 	DurationSec *int32             `json:"duration_sec"`
-	Density     *int32             `json:"density"`
 	Note        *string            `json:"note"`
 }
 
@@ -302,12 +348,13 @@ func (q *Queries) UpdateWorkSlice(ctx context.Context, arg UpdateWorkSliceParams
 	row := q.db.QueryRow(ctx, updateWorkSlice,
 		arg.ID,
 		arg.UserID,
-		arg.Mode,
 		arg.TaskID,
+		arg.Mode,
+		arg.Driver,
+		arg.OffReason,
 		arg.StartedAt,
 		arg.EndedAt,
 		arg.DurationSec,
-		arg.Density,
 		arg.Note,
 	)
 	var i WorkSlice
@@ -323,7 +370,9 @@ func (q *Queries) UpdateWorkSlice(ctx context.Context, arg UpdateWorkSliceParams
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Density,
+		&i.Type,
+		&i.Driver,
+		&i.OffReason,
 	)
 	return i, err
 }

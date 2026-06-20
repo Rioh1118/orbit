@@ -91,7 +91,6 @@ func (r *FrictionRepo) Create(ctx context.Context, f *friction.Friction) (*frict
 		TaskID:      toPgUUIDPtr(f.TaskID),
 		WorkSliceID: toPgUUIDPtr(f.WorkSliceID),
 		PatternTag:  string(f.PatternTag),
-		Severity:    int32(f.Severity),
 		Description: f.Description,
 	})
 	if err != nil {
@@ -107,7 +106,6 @@ func (r *FrictionRepo) Update(ctx context.Context, f *friction.Friction) (*frict
 		TaskID:         toPgUUIDPtr(f.TaskID),
 		WorkSliceID:    toPgUUIDPtr(f.WorkSliceID),
 		PatternTag:     string(f.PatternTag),
-		Severity:       int32(f.Severity),
 		Description:    f.Description,
 		ResolvedAt:     toPgTimePtr(f.ResolvedAt),
 		ResolutionNote: strToPtr(f.ResolutionNote),
@@ -138,7 +136,6 @@ func rowToFriction(r sqlcgen.Friction) *friction.Friction {
 		TaskID:         pgUUIDToPtr(r.TaskID),
 		WorkSliceID:    pgUUIDToPtr(r.WorkSliceID),
 		PatternTag:     friction.PatternTag(r.PatternTag),
-		Severity:       int(r.Severity),
 		Description:    r.Description,
 		ResolvedAt:     pgTimeToPtr(r.ResolvedAt),
 		ResolutionNote: ptrToStr(r.ResolutionNote),

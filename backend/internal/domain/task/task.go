@@ -30,7 +30,6 @@ func (s Status) Valid() bool { return validStatuses[s] }
 type Category string
 
 const (
-	CategoryLearning      Category = "learning"
 	CategoryNewFeature    Category = "new_feature"
 	CategoryBugFix        Category = "bug_fix"
 	CategoryRefactor      Category = "refactor"
@@ -39,8 +38,9 @@ const (
 	CategoryOther         Category = "other"
 )
 
+// learning is intentionally NOT a category (ADR 005): it is observed as a mode
+// signature (high study+code_explore share), not a task output type.
 var validCategories = map[Category]bool{
-	CategoryLearning:      true,
 	CategoryNewFeature:    true,
 	CategoryBugFix:        true,
 	CategoryRefactor:      true,

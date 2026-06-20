@@ -31,13 +31,13 @@ func TestCategoryValid(t *testing.T) {
 		in   Category
 		want bool
 	}{
-		{CategoryLearning, true},
 		{CategoryNewFeature, true},
 		{CategoryBugFix, true},
 		{CategoryRefactor, true},
 		{CategoryInvestigation, true},
 		{CategorySupport, true},
 		{CategoryOther, true},
+		{Category("learning"), false}, // ADR 005: learning removed from category
 		{Category(""), false},
 		{Category("unknown"), false},
 	}

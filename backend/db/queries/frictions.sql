@@ -34,8 +34,8 @@ WHERE id = $1 AND user_id = $2
 LIMIT 1;
 
 -- name: CreateFriction :one
-INSERT INTO frictions (id, user_id, task_id, work_slice_id, pattern_tag, severity, description)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO frictions (id, user_id, task_id, work_slice_id, pattern_tag, description)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: UpdateFriction :one
@@ -43,10 +43,9 @@ UPDATE frictions
 SET task_id = $3,
     work_slice_id = $4,
     pattern_tag = $5,
-    severity = $6,
-    description = $7,
-    resolved_at = $8,
-    resolution_note = $9,
+    description = $6,
+    resolved_at = $7,
+    resolution_note = $8,
     updated_at = now()
 WHERE id = $1 AND user_id = $2
 RETURNING *;

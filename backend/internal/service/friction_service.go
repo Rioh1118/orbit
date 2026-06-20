@@ -61,7 +61,6 @@ type FCreateInput struct {
 	TaskID      *uuid.UUID
 	WorkSliceID *uuid.UUID
 	PatternTag  friction.PatternTag
-	Severity    int
 	Description string
 }
 
@@ -70,17 +69,12 @@ func (s *FrictionService) Create(ctx context.Context, in FCreateInput) (*frictio
 	if err != nil {
 		return nil, fmt.Errorf("uuid: %w", err)
 	}
-	severity := in.Severity
-	if severity == 0 {
-		severity = 1
-	}
 	f := &friction.Friction{
 		ID:          id,
 		UserID:      in.UserID,
 		TaskID:      in.TaskID,
 		WorkSliceID: in.WorkSliceID,
 		PatternTag:  in.PatternTag,
-		Severity:    severity,
 		Description: in.Description,
 	}
 	if err := f.Validate(); err != nil {
@@ -90,18 +84,17 @@ func (s *FrictionService) Create(ctx context.Context, in FCreateInput) (*frictio
 }
 
 type FUpdateInput struct {
-	ID              uuid.UUID
-	UserID          uuid.UUID
-	TaskID          *uuid.UUID
-	ClearTaskID     bool
-	WorkSliceID     *uuid.UUID
-	ClearWorkSlice  bool
-	PatternTag      *friction.PatternTag
-	Severity        *int
-	Description     *string
-	ResolutionNote  *string
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	TaskID         *uuid.UUID
+	ClearTaskID    bool
+	WorkSliceID    *uuid.UUID
+	ClearWorkSlice bool
+	PatternTag     *friction.PatternTag
+	Description    *string
+	ResolutionNote *string
 	// Resolve toggles resolved_at. nil = no change, true = resolve now, false = clear.
-	Resolve         *bool
+	Resolve *bool
 }
 
 func (s *FrictionService) Update(ctx context.Context, in FUpdateInput) (*friction.Friction, error) {
@@ -124,9 +117,6 @@ func (s *FrictionService) Update(ctx context.Context, in FUpdateInput) (*frictio
 			return nil, friction.ErrInvalidPatternTag
 		}
 		f.PatternTag = *in.PatternTag
-	}
-	if in.Severity != nil {
-		f.Severity = *in.Severity
 	}
 	if in.Description != nil {
 		f.Description = *in.Description
