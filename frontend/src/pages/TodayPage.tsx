@@ -28,11 +28,15 @@ function sliceDurationSec(s: WorkSlice, now: number): number {
     return Math.max(
       0,
       Math.floor(
-        (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 1000,
+        (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) /
+          1000,
       ),
     );
   }
-  return Math.max(0, Math.floor((now - new Date(s.started_at).getTime()) / 1000));
+  return Math.max(
+    0,
+    Math.floor((now - new Date(s.started_at).getTime()) / 1000),
+  );
 }
 
 function formatHM(seconds: number): string {
@@ -47,13 +51,20 @@ export default function TodayPage() {
   const { data, isLoading, error } = useSlices({ from, to, limit: 200 });
   const { data: openFrictions } = useOpenFrictions();
   const [frictionOpen, setFrictionOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Global hotkey `f` to record a friction (ignored while typing).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
-      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+        return;
       if (e.key.toLowerCase() === "f") {
         e.preventDefault();
         setFrictionOpen(true);
@@ -63,26 +74,31 @@ export default function TodayPage() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const slices = data?.data ?? [];
-  const now = Date.now();
-  const totalSec = slices.reduce((acc, s) => acc + sliceDurationSec(s, now), 0);
-
-  const modeSlices = useMemo(() => {
-    if (totalSec === 0) return [];
+  // Single memo over the query result + clock tick (review M4: stable deps).
+  const { workCount, totalSec, modeSlices } = useMemo(() => {
+    const slices = data?.data ?? [];
+    // Growth time is craft only; off segments (break/meeting) are excluded (ADR 005).
+    const work = slices.filter((s) => s.type === "work");
+    const total = work.reduce((acc, s) => acc + sliceDurationSec(s, now), 0);
+    if (total === 0)
+      return { workCount: work.length, totalSec: 0, modeSlices: [] };
     const byMode = new Map<SliceMode, number>();
-    for (const s of slices) {
-      byMode.set(s.mode, (byMode.get(s.mode) ?? 0) + sliceDurationSec(s, now));
+    for (const s of work) {
+      if (!s.mode) continue;
+      const mode = s.mode as SliceMode;
+      byMode.set(mode, (byMode.get(mode) ?? 0) + sliceDurationSec(s, now));
     }
-    return Array.from(byMode.entries()).map(([mode, secs]) => {
+    const bars = Array.from(byMode.entries()).map(([mode, secs]) => {
       const meta = SLICE_MODE_META[mode];
       return {
         mode,
         label: meta?.label ?? mode,
         modeKey: meta?.key ?? "?",
-        pct: Math.round((secs / totalSec) * 100),
+        pct: Math.round((secs / total) * 100),
       };
     });
-  }, [slices, totalSec, now]);
+    return { workCount: work.length, totalSec: total, modeSlices: bars };
+  }, [data, now]);
 
   const openCount = openFrictions?.data.length ?? 0;
 
@@ -102,11 +118,13 @@ export default function TodayPage() {
         <div className="mt-5">
           {isLoading && <p className="text-sm text-mist">loading…</p>}
           {error && (
-            <p className="text-sm text-danger">error: {(error as Error).message}</p>
+            <p className="text-sm text-danger">
+              error: {(error as Error).message}
+            </p>
           )}
           {!isLoading && !error && modeSlices.length === 0 && (
             <p className="font-mono text-xs uppercase tracking-instrument text-mist">
-              no slices today yet
+              no work segments today yet
             </p>
           )}
           {modeSlices.length > 0 && <ModeBar slices={modeSlices} />}
@@ -115,7 +133,7 @@ export default function TodayPage() {
 
       <section className="grid grid-cols-3 gap-3">
         <StatTile label="focus" value={formatHM(totalSec)} hint="today" />
-        <StatTile label="slices" value={slices.length} hint="today" />
+        <StatTile label="segments" value={workCount} hint="today" />
         <StatTile label="frictions" value={openCount} hint="open" />
       </section>
 
@@ -123,7 +141,9 @@ export default function TodayPage() {
         <Divider label="friction log" />
         <div className="mt-3 flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-instrument text-mist">
-            press <kbd className="rounded border border-instrument/40 px-1">f</kbd> to record
+            press{" "}
+            <kbd className="rounded border border-instrument/40 px-1">f</kbd> to
+            record
           </p>
           <button
             type="button"
@@ -138,7 +158,10 @@ export default function TodayPage() {
         </div>
       </section>
 
-      <FrictionModal open={frictionOpen} onClose={() => setFrictionOpen(false)} />
+      <FrictionModal
+        open={frictionOpen}
+        onClose={() => setFrictionOpen(false)}
+      />
     </div>
   );
 }

@@ -21,25 +21,33 @@ SELECT * FROM work_slices
 WHERE user_id = $1 AND ended_at IS NULL
 ORDER BY started_at DESC;
 
+-- name: GetOpenWorkSlice :one
+-- The single currently-open segment (state machine: at most one per user).
+SELECT * FROM work_slices
+WHERE user_id = $1 AND ended_at IS NULL
+ORDER BY started_at DESC
+LIMIT 1;
+
 -- name: GetWorkSlice :one
 SELECT * FROM work_slices
 WHERE id = $1 AND user_id = $2
 LIMIT 1;
 
 -- name: CreateWorkSlice :one
-INSERT INTO work_slices (id, user_id, task_id, mode, started_at, note)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO work_slices (id, user_id, task_id, type, mode, driver, off_reason, started_at, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: UpdateWorkSlice :one
 UPDATE work_slices
-SET mode = $3,
-    task_id = $4,
-    started_at = $5,
-    ended_at = $6,
-    duration_sec = $7,
-    density = $8,
-    note = $9,
+SET task_id = $3,
+    mode = $4,
+    driver = $5,
+    off_reason = $6,
+    started_at = $7,
+    ended_at = $8,
+    duration_sec = $9,
+    note = $10,
     updated_at = now()
 WHERE id = $1 AND user_id = $2
 RETURNING *;
@@ -47,13 +55,15 @@ RETURNING *;
 -- name: DeleteWorkSlice :exec
 DELETE FROM work_slices WHERE id = $1 AND user_id = $2;
 
--- name: SumWorkSlicesByModeInRange :many
--- Sum durations by mode for ended slices within [from, to).
--- Treats in-progress slices (ended_at NULL) as 0 to keep the query stable.
+-- name: SumWorkModeInRange :many
+-- Today distribution: total work seconds per mode for ended WORK segments in [from, to).
+-- Intentionally NOT category-faceted (review M7): Today is the whole day's craft mix,
+-- distinct from the ADR-criticized cross-task report (which is category-faceted in reports.sql).
 SELECT mode, COALESCE(SUM(duration_sec), 0)::bigint AS total_seconds
 FROM work_slices
 WHERE user_id = $1
+  AND type = 'work'
+  AND ended_at IS NOT NULL
   AND started_at >= $2
   AND started_at < $3
-  AND ended_at IS NOT NULL
 GROUP BY mode;

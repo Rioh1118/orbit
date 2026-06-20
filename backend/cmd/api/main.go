@@ -45,12 +45,15 @@ func main() {
 	taskRepo := repo.NewTaskRepo(pool)
 	wsRepo := repo.NewWorkSliceRepo(pool)
 	frictionRepo := repo.NewFrictionRepo(pool)
+	reportRepo := repo.NewReportRepo(pool)
 	taskSvc := service.NewTaskService(taskRepo)
 	wsSvc := service.NewWorkSliceService(wsRepo, taskRepo)
 	frictionSvc := service.NewFrictionService(frictionRepo)
+	reportSvc := service.NewReportService(reportRepo)
 	taskHandler := handlers.NewTaskHandler(taskSvc)
 	wsHandler := handlers.NewWorkSliceHandler(wsSvc)
 	frictionHandler := handlers.NewFrictionHandler(frictionSvc)
+	reportHandler := handlers.NewReportHandler(reportSvc)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -76,6 +79,7 @@ func main() {
 		r.Mount("/tasks", taskHandler.Routes())
 		r.Mount("/work-slices", wsHandler.Routes())
 		r.Mount("/frictions", frictionHandler.Routes())
+		r.Mount("/reports", reportHandler.Routes())
 	})
 
 	srv := &http.Server{

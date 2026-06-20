@@ -1,5 +1,6 @@
 import { KeyCap } from "@/components/ui/KeyCap";
 import { modeColors } from "@/lib/chartTheme";
+import type { SliceMode } from "@/features/slices/types";
 
 interface ModeSlice {
   modeKey: string;
@@ -26,11 +27,14 @@ export function ModeBar({ slices }: ModeBarProps) {
               className="absolute inset-y-0 left-0"
               style={{
                 width: `${s.pct}%`,
-                backgroundColor: modeColors[s.mode] ?? "var(--color-instrument)",
+                backgroundColor:
+                  modeColors[s.mode as SliceMode] ?? "var(--color-instrument)",
               }}
             />
           </div>
-          <span className="w-10 text-right font-mono text-xs text-parchment-muted">{s.pct}%</span>
+          <span className="w-10 text-right font-mono text-xs text-parchment-muted">
+            {s.pct}%
+          </span>
         </li>
       ))}
     </ul>

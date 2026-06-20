@@ -69,10 +69,10 @@ Serif で「個人的な記録」感を担保。
 | Component | 比喩 |
 |---|---|
 | `ActiveSliceBanner` | 進行中の観測 — 左端に細い緑、glow |
-| `ModeBar` | 1キー付き棒グラフ — 計器盤の主役 |
+| `ModeBar` | 1キー付き棒グラフ (mode×driver の配分) — 計器盤の主役 |
 | `StatTile` | 単一指標 — 数値は mono の 3xl |
 | `FrictionItem` | 詰まりログ — pattern_tag 必須 |
-| `InsightItem` | 羊皮紙の記録 — serif、before取り消し線、afterは parchment 本文 |
+| ~~`InsightItem`~~ | 削除 (ADR 005 で Insight を defer)。`InsightItem.tsx` も撤去 |
 | `ThenVsNowChart` | 4週分の mode 別 stacked area |
 | `CategoryTabs` | category 軸切替 — 計器の選択ダイヤル |
 

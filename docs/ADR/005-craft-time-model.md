@@ -41,7 +41,10 @@ Friction `pattern_tag` / Insight を定義した。記録側 (Task/Slice/Frictio
 - mode 配分の推移 (例: `study`+`code_explore` の割合が痩せた = 習熟)
 - 完了タスクあたりの自分時間の推移 (本人の言う「完了時間が下がってていいね」)
 
-### 2. Work Slice を「作業区間 (Segment)」とし、相互作用を単一現在活動の状態機械にする
+### 2. Work Slice を「作業区間」とし、相互作用を単一現在活動の状態機械にする
+
+> 命名注記 (2026-06-20 追補): ドメイン/UI 語は「作業区間」。**コード識別子は既存の
+> `WorkSlice` / テーブル `work_slices` を継続する**(`Segment` への改名は行わない)。
 
 - **不変条件: ユーザーあたり「開いた区間」は常に高々1つ。** 新しい活動を宣言すると前の区間が自動 close
   (次の開始イベントが前の終了を兼ねる)。明示的な stop は別操作ではなく次の開始に内包される。
@@ -100,7 +103,7 @@ Friction `pattern_tag` / Insight を定義した。記録側 (Task/Slice/Frictio
 | 日本語 / コード | 定義 | 成長集計 |
 |---|---|---|
 | タスク / `Task` | 達成対象。`category` を1つ持つ | 器 |
-| 作業区間 / `Segment` | 連続した能動 craft 時間帯。`mode`×`driver`×task を各1。現在は高々1つ | 入る (= 自分時間) |
+| 作業区間 (code: `WorkSlice`/`work_slices`) | 連続した能動 craft 時間帯。`mode`×`driver`×task を各1。現在は高々1つ | 入る (= 自分時間) |
 | 停滞 / `Friction` | 進行が止まったイベント。`pattern_tag` で分類。時間として合算しない | 件数 (主) + 解決ラグ (任意) |
 | 計測対象外 | 区間外時間。reason {break, meeting, other}。分析しない | 除外 |
 

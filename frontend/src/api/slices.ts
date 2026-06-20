@@ -1,6 +1,6 @@
 import { request, requestList, requestNoBody } from "./client";
 import type {
-  EndSliceInput,
+  StartOffInput,
   StartSliceInput,
   WorkSlice,
 } from "@/features/slices/types";
@@ -12,7 +12,10 @@ function buildQuery(params: QueryParams): string {
     ([, v]) => v !== undefined && v !== null && v !== "",
   );
   if (entries.length === 0) return "";
-  return "?" + new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString();
+  return (
+    "?" +
+    new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()
+  );
 }
 
 export interface ListSlicesQuery {
@@ -28,15 +31,21 @@ export const slicesApi = {
   list: (q: ListSlicesQuery = {}) =>
     requestList<WorkSlice>(`/v1/work-slices${buildQuery({ ...q })}`),
   active: () => request<WorkSlice[]>("/v1/work-slices/active"),
+  current: () => request<WorkSlice | null>("/v1/work-slices/current"),
   start: (input: StartSliceInput) =>
     request<WorkSlice>("/v1/work-slices/start", {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  end: (id: string, input: EndSliceInput = {}) =>
-    request<WorkSlice>(`/v1/work-slices/${id}/end`, {
+  startOff: (input: StartOffInput) =>
+    request<WorkSlice>("/v1/work-slices/start-off", {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  remove: (id: string) => requestNoBody(`/v1/work-slices/${id}`, { method: "DELETE" }),
+  stop: () =>
+    request<WorkSlice | null>("/v1/work-slices/stop", { method: "POST" }),
+  end: (id: string) =>
+    request<WorkSlice>(`/v1/work-slices/${id}/end`, { method: "POST" }),
+  remove: (id: string) =>
+    requestNoBody(`/v1/work-slices/${id}`, { method: "DELETE" }),
 };

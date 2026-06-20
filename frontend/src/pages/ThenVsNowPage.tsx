@@ -1,34 +1,96 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts";
 import { CategoryTabs, type Category } from "@/components/orbit/CategoryTabs";
-import { ThenVsNowChart, type WeekPoint } from "@/components/orbit/ThenVsNowChart";
+import {
+  ThenVsNowChart,
+  type WeekPoint,
+} from "@/components/orbit/ThenVsNowChart";
 import { Divider } from "@/components/ui/Divider";
 import { StatTile } from "@/components/orbit/StatTile";
-import { InsightItem } from "@/components/orbit/InsightItem";
+import { chartTheme } from "@/lib/chartTheme";
+import { useThenVsNow } from "@/features/reports/hooks";
 
-const WEEKS: WeekPoint[] = [
-  { week: "W-3", code_explore: 320, implement: 90, debug: 60, spec_read: 40 },
-  { week: "W-2", code_explore: 260, implement: 120, debug: 50, spec_read: 30 },
-  { week: "W-1", code_explore: 190, implement: 150, debug: 40, spec_read: 25 },
-  { week: "now", code_explore: 140, implement: 170, debug: 30, spec_read: 20 },
-];
+const MIN_WEEKS_FOR_SIGNAL = 2;
 
-const MODES = ["spec_read", "debug", "implement", "code_explore"];
+function shortWeek(week: string): string {
+  return week.length >= 10 ? week.slice(5) : week;
+}
 
-const INSIGHTS = [
-  {
-    before: "ActiveRecord の where(...).first は遅いと思っていた",
-    after: "find_by が同じだと知った。N+1だけ気にすれば良い",
-    date: "W-1",
-  },
-  {
-    before: "Hotwire の turbo-frame は何にでも使えると思っていた",
-    after: "frame は1ページ内で1要素しか上書きしない",
-    date: "W-2",
-  },
-];
+function pct(x: number): string {
+  return `${Math.round(x * 100)}%`;
+}
 
 export default function ThenVsNowPage() {
-  const [category, setCategory] = useState<Category>("learning");
+  const [category, setCategory] = useState<Category>("new_feature");
+  const { data, isLoading, error } = useThenVsNow(category);
+
+  // Build week points (minutes per mode) + per-week totals for share math.
+  const { points, modes, totals } = useMemo(() => {
+    if (!data) {
+      return {
+        points: [] as WeekPoint[],
+        modes: [] as string[],
+        totals: [] as number[],
+      };
+    }
+    const byWeek = new Map<string, WeekPoint>();
+    const order: string[] = [];
+    const modeSet = new Set<string>();
+    for (const r of data.mode_by_week) {
+      modeSet.add(r.mode);
+      if (!byWeek.has(r.week)) {
+        byWeek.set(r.week, { week: shortWeek(r.week) } as WeekPoint);
+        order.push(r.week);
+      }
+      const w = byWeek.get(r.week);
+      if (w) w[r.mode] = Math.round(r.seconds / 60);
+    }
+    const pts = order.map((k) => byWeek.get(k) as WeekPoint);
+    const tot = pts.map((p) =>
+      Object.entries(p).reduce(
+        (a, [k, v]) => (k === "week" ? a : a + Number(v)),
+        0,
+      ),
+    );
+    return { points: pts, modes: Array.from(modeSet), totals: tot };
+  }, [data]);
+
+  // Share-point delta first→now for a mode (review H1: proportion, not absolute).
+  const shareDelta = (mode: string): string => {
+    if (points.length < MIN_WEEKS_FOR_SIGNAL) return "—";
+    const first = totals[0] ? Number(points[0][mode] ?? 0) / totals[0] : 0;
+    const lastIdx = points.length - 1;
+    const last = totals[lastIdx]
+      ? Number(points[lastIdx][mode] ?? 0) / totals[lastIdx]
+      : 0;
+    return `${pct(first)} → ${pct(last)}`;
+  };
+
+  // Completion-time trend: avg own-time/task per week, low-N weeks suppressed (review H2 / 原則4).
+  const completionSeries = useMemo(
+    () =>
+      (data?.completed_by_week ?? [])
+        .filter((c) => c.task_count >= 1)
+        .map((c) => ({
+          week: shortWeek(c.week),
+          min: Math.round(c.avg_seconds_per_task / 60),
+          n: c.task_count,
+        })),
+    [data],
+  );
+
+  const frictionSummary = useMemo(() => {
+    const byTag = new Map<string, number>();
+    let total = 0;
+    for (const b of data?.friction_by_week ?? []) {
+      byTag.set(b.pattern_tag, (byTag.get(b.pattern_tag) ?? 0) + b.count);
+      total += b.count;
+    }
+    const detail = Array.from(byTag.entries())
+      .map(([tag, n]) => `${tag} ${n}`)
+      .join(" · ");
+    return { total, detail };
+  }, [data]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
@@ -43,27 +105,84 @@ export default function ThenVsNowPage() {
 
       <CategoryTabs value={category} onChange={setCategory} />
 
-      <section>
-        <Divider label="mode allocation / last 4 weeks" />
-        <div className="mt-5">
-          <ThenVsNowChart data={WEEKS} modes={MODES} />
-        </div>
-      </section>
+      {isLoading && <p className="text-sm text-mist">loading…</p>}
+      {error && (
+        <p className="text-sm text-danger">error: {(error as Error).message}</p>
+      )}
 
-      <section className="grid grid-cols-3 gap-3">
-        <StatTile label="explore" value="−56%" hint="W-3 → now" />
-        <StatTile label="implement" value="+89%" hint="W-3 → now" />
-        <StatTile label="friction · cant_find" value="−40%" hint="resolve time" />
-      </section>
+      {!isLoading && !error && points.length < MIN_WEEKS_FOR_SIGNAL && (
+        <p className="font-mono text-xs uppercase tracking-instrument text-mist">
+          データ不足 — あと {MIN_WEEKS_FOR_SIGNAL - points.length}{" "}
+          週分で推移を表示します
+        </p>
+      )}
 
-      <section>
-        <Divider label="insights / this week" />
-        <div className="mt-5 space-y-6">
-          {INSIGHTS.map((i, idx) => (
-            <InsightItem key={idx} {...i} />
-          ))}
-        </div>
-      </section>
+      {points.length >= MIN_WEEKS_FOR_SIGNAL && (
+        <>
+          <section>
+            <Divider label="mode allocation / weekly share" />
+            <div className="mt-5">
+              <ThenVsNowChart data={points} modes={modes} />
+            </div>
+          </section>
+
+          <section className="grid grid-cols-2 gap-3">
+            <StatTile
+              label="code explore share"
+              value={shareDelta("code_explore")}
+              hint="first → now"
+            />
+            <StatTile
+              label="implement share"
+              value={shareDelta("implement")}
+              hint="first → now"
+            />
+          </section>
+
+          <section>
+            <Divider label="completion time / task (min)" />
+            {completionSeries.length < MIN_WEEKS_FOR_SIGNAL ? (
+              <p className="mt-4 font-mono text-xs uppercase tracking-instrument text-mist">
+                データ不足 — 完了タスクが足りません
+              </p>
+            ) : (
+              <div className="mt-4 h-24 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={completionSeries}
+                    margin={{ top: 6, right: 8, left: -8, bottom: 0 }}
+                  >
+                    <YAxis hide domain={["auto", "auto"]} />
+                    <Tooltip
+                      contentStyle={chartTheme.tooltipStyle}
+                      formatter={(v: number | string) => `${Number(v)}m`}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="min"
+                      stroke="var(--color-growth)"
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+
+          <section>
+            <Divider label="frictions / this window" />
+            <p className="mt-4 font-mono text-sm text-parchment">
+              {frictionSummary.total} 件
+              {frictionSummary.detail && (
+                <span className="ml-2 text-xs text-mist">
+                  {frictionSummary.detail}
+                </span>
+              )}
+            </p>
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/Rioh1118/orbit/backend/internal/domain/workslice"
@@ -53,6 +54,11 @@ func (s *WorkSliceService) ListActive(ctx context.Context, userID uuid.UUID) ([]
 	return s.repo.ListActive(ctx, userID)
 }
 
+// Current returns the single open segment, or (nil, nil) if not working.
+func (s *WorkSliceService) Current(ctx context.Context, userID uuid.UUID) (*workslice.WorkSlice, error) {
+	return s.repo.GetOpen(ctx, userID)
+}
+
 func (s *WorkSliceService) Get(ctx context.Context, id, userID uuid.UUID) (*workslice.WorkSlice, error) {
 	return s.repo.Get(ctx, id, userID)
 }
@@ -61,10 +67,15 @@ type WSStartInput struct {
 	UserID uuid.UUID
 	TaskID *uuid.UUID
 	Mode   workslice.Mode
+	Driver workslice.Driver
 	Note   string
 }
 
+// Start opens a WORK segment, atomically closing any segment already open (state machine, ADR 005 / C1).
 func (s *WorkSliceService) Start(ctx context.Context, in WSStartInput) (*workslice.WorkSlice, error) {
+	if in.Driver == "" {
+		in.Driver = workslice.DriverSolo
+	}
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, fmt.Errorf("uuid: %w", err)
@@ -74,31 +85,76 @@ func (s *WorkSliceService) Start(ctx context.Context, in WSStartInput) (*worksli
 		ID:        id,
 		UserID:    in.UserID,
 		TaskID:    in.TaskID,
+		Type:      workslice.TypeWork,
 		Mode:      in.Mode,
+		Driver:    in.Driver,
 		StartedAt: now,
 		Note:      in.Note,
 	}
 	if err := w.Validate(); err != nil {
 		return nil, err
 	}
-	created, err := s.repo.Create(ctx, w)
+	created, err := s.repo.StartExclusive(ctx, w)
 	if err != nil {
 		return nil, err
 	}
-	// Auto-set tasks.started_at on first slice. Best-effort, ignore errors.
+	// Auto-set tasks.started_at on first slice. Best-effort but logged (not swallowed).
 	if in.TaskID != nil {
 		if t, err := s.taskRepo.Get(ctx, *in.TaskID, in.UserID); err == nil && t.StartedAt == nil {
 			t.StartedAt = &now
-			_, _ = s.taskRepo.Update(ctx, t)
+			if _, err := s.taskRepo.Update(ctx, t); err != nil {
+				slog.WarnContext(ctx, "failed to set task started_at", "task_id", *in.TaskID, "error", err)
+			}
 		}
 	}
 	return created, nil
 }
 
+type WSStartOffInput struct {
+	UserID uuid.UUID
+	Reason workslice.OffReason
+	Note   string
+}
+
+// StartOff opens a non-craft (off) segment, atomically closing the open segment.
+func (s *WorkSliceService) StartOff(ctx context.Context, in WSStartOffInput) (*workslice.WorkSlice, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("uuid: %w", err)
+	}
+	now := time.Now().UTC()
+	w := &workslice.WorkSlice{
+		ID:        id,
+		UserID:    in.UserID,
+		Type:      workslice.TypeOff,
+		OffReason: in.Reason,
+		StartedAt: now,
+		Note:      in.Note,
+	}
+	if err := w.Validate(); err != nil {
+		return nil, err
+	}
+	return s.repo.StartExclusive(ctx, w)
+}
+
+// Stop closes the user's open segment without opening a new one ("作業終了").
+func (s *WorkSliceService) Stop(ctx context.Context, userID uuid.UUID) (*workslice.WorkSlice, error) {
+	open, err := s.repo.GetOpen(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if open == nil {
+		return nil, nil
+	}
+	if err := open.End(time.Now().UTC()); err != nil {
+		return nil, err
+	}
+	return s.repo.Update(ctx, open)
+}
+
 type WSEndInput struct {
-	ID      uuid.UUID
-	UserID  uuid.UUID
-	Density *int
+	ID     uuid.UUID
+	UserID uuid.UUID
 }
 
 func (s *WorkSliceService) End(ctx context.Context, in WSEndInput) (*workslice.WorkSlice, error) {
@@ -106,7 +162,7 @@ func (s *WorkSliceService) End(ctx context.Context, in WSEndInput) (*workslice.W
 	if err != nil {
 		return nil, err
 	}
-	if err := w.End(time.Now().UTC(), in.Density); err != nil {
+	if err := w.End(time.Now().UTC()); err != nil {
 		return nil, err
 	}
 	return s.repo.Update(ctx, w)
@@ -116,10 +172,10 @@ type WSUpdateInput struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
 	Mode      *workslice.Mode
+	Driver    *workslice.Driver
 	TaskID    *uuid.UUID
 	StartedAt *time.Time
 	EndedAt   *time.Time
-	Density   *int
 	Note      *string
 	// ClearTaskID forces task_id to NULL (since *uuid.UUID can't distinguish unset from cleared).
 	ClearTaskID bool
@@ -131,10 +187,10 @@ func (s *WorkSliceService) Update(ctx context.Context, in WSUpdateInput) (*works
 		return nil, err
 	}
 	if in.Mode != nil {
-		if !in.Mode.Valid() {
-			return nil, workslice.ErrInvalidMode
-		}
 		w.Mode = *in.Mode
+	}
+	if in.Driver != nil {
+		w.Driver = *in.Driver
 	}
 	if in.ClearTaskID {
 		w.TaskID = nil
@@ -149,10 +205,6 @@ func (s *WorkSliceService) Update(ctx context.Context, in WSUpdateInput) (*works
 		dur := int(in.EndedAt.Sub(w.StartedAt).Seconds())
 		w.DurationSec = &dur
 	}
-	if in.Density != nil {
-		d := *in.Density
-		w.Density = &d
-	}
 	if in.Note != nil {
 		w.Note = *in.Note
 	}
@@ -166,7 +218,7 @@ func (s *WorkSliceService) Delete(ctx context.Context, id, userID uuid.UUID) err
 	return s.repo.Delete(ctx, id, userID)
 }
 
-// SumByModeForRange returns total seconds per mode in [from, to).
+// SumByModeForRange returns total work seconds per mode in [from, to) (Today distribution).
 func (s *WorkSliceService) SumByModeForRange(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[workslice.Mode]int64, error) {
 	if !to.After(from) {
 		return nil, errors.New("to must be after from")

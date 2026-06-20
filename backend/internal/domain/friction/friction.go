@@ -18,6 +18,7 @@ const (
 	TagFlakyTest       PatternTag = "flaky_test"
 	TagUnclearSpec     PatternTag = "unclear_spec"
 	TagWaitingHuman    PatternTag = "waiting_human"
+	TagWaitingAI       PatternTag = "waiting_ai"
 	TagToolQuirk       PatternTag = "tool_quirk"
 	TagConceptGap      PatternTag = "concept_gap"
 )
@@ -31,6 +32,7 @@ var validTags = map[PatternTag]bool{
 	TagFlakyTest:       true,
 	TagUnclearSpec:     true,
 	TagWaitingHuman:    true,
+	TagWaitingAI:       true,
 	TagToolQuirk:       true,
 	TagConceptGap:      true,
 }
@@ -38,19 +40,17 @@ var validTags = map[PatternTag]bool{
 func (t PatternTag) Valid() bool { return validTags[t] }
 
 const (
-	minSeverity        = 1
-	maxSeverity        = 3
-	maxDescriptionLen  = 2000
-	maxResolutionLen   = 2000
+	maxDescriptionLen = 2000
+	maxResolutionLen  = 2000
 )
 
+// Friction is a "停滞" event (ADR 005): counted, never summed as time.
 type Friction struct {
 	ID             uuid.UUID
 	UserID         uuid.UUID
 	TaskID         *uuid.UUID
 	WorkSliceID    *uuid.UUID
 	PatternTag     PatternTag
-	Severity       int
 	Description    string
 	ResolvedAt     *time.Time
 	ResolutionNote string
@@ -60,7 +60,6 @@ type Friction struct {
 
 var (
 	ErrInvalidPatternTag = errors.New("invalid friction pattern_tag")
-	ErrInvalidSeverity   = errors.New("severity must be 1-3")
 	ErrDescriptionEmpty  = errors.New("description is required")
 	ErrDescriptionLong   = errors.New("description must be <= 2000 chars")
 	ErrResolutionLong    = errors.New("resolution_note must be <= 2000 chars")
@@ -70,9 +69,6 @@ var (
 func (f *Friction) Validate() error {
 	if !f.PatternTag.Valid() {
 		return ErrInvalidPatternTag
-	}
-	if f.Severity < minSeverity || f.Severity > maxSeverity {
-		return ErrInvalidSeverity
 	}
 	if f.Description == "" {
 		return ErrDescriptionEmpty

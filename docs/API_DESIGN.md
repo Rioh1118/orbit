@@ -121,10 +121,13 @@ GitHub OAuth を予定 ([ROADMAP.md](./ROADMAP.md) 参照)
 | Method | Path | 用途 |
 |---|---|---|
 | GET | `/v1/work-slices` | 一覧 (filter: `task_id`, `mode`, `from`, `to`, `limit`, `offset`) |
-| GET | `/v1/work-slices/active` | 進行中 Slice 一覧 |
-| POST | `/v1/work-slices/start` | 開始 (body: `mode`, `task_id?`, `note?`) |
-| POST | `/v1/work-slices/{id}/end` | 終了 (body: `density?`) |
-| PATCH | `/v1/work-slices/{id}` | 編集 (`mode` / `note` / `density` / `started_at` / `ended_at`) |
+| GET | `/v1/work-slices/active` | 開区間一覧 (高々1件) |
+| GET | `/v1/work-slices/current` | 現在の開区間 or null |
+| POST | `/v1/work-slices/start` | WORK開始 (body: `mode`, `driver?`, `task_id?`, `note?`)。開いていた区間は自動close。二重起動は **409** |
+| POST | `/v1/work-slices/start-off` | 計測対象外開始 (body: `reason` = break/meeting/other) |
+| POST | `/v1/work-slices/stop` | 現在の区間を閉じる (新規は開かない) |
+| POST | `/v1/work-slices/{id}/end` | 指定区間を終了 (body なし) |
+| PATCH | `/v1/work-slices/{id}` | 編集 (`mode` / `driver` / `note` / `started_at` / `ended_at`) |
 | DELETE | `/v1/work-slices/{id}` | 削除 |
 
 ### Frictions
@@ -140,17 +143,14 @@ GitHub OAuth を予定 ([ROADMAP.md](./ROADMAP.md) 参照)
 
 | Method | Path | 用途 |
 |---|---|---|
-| GET | `/v1/insights` | 一覧 (filter: `task_id`, `friction_id`, `from`, `to`) |
-| POST | `/v1/insights` | 作成 (`after_text` 必須) |
-| PATCH | `/v1/insights/{id}` | 更新 |
-| DELETE | `/v1/insights/{id}` | 削除 |
+| — | ~~`/v1/insights*`~~ | **廃止 (ADR 005 で Insight を defer)** — 未実装 |
 
 ### Reports / Analytics (再設計)
 
 | Method | Path | 用途 |
 |---|---|---|
-| GET | `/v1/reports/today?tz=Asia/Tokyo` | Today 画面用 |
-| GET | `/v1/reports/then-vs-now?category=learning&weeks=4&tz=Asia/Tokyo` | Then vs Now 画面用 |
+| — | ~~`/v1/reports/today`~~ | **未実装** — Today は client 側で `/v1/work-slices?from&to` から集計 |
+| GET | `/v1/reports/then-vs-now?category=new_feature&weeks=4&tz=Asia/Tokyo` | Then vs Now (category×週グロス)。`category` は6値、不正は400 |
 
 **deprecated** (Phase 1.x で削除):
 - `GET /v1/reports/daily` — `today` に統合の方向

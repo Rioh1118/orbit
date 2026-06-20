@@ -99,7 +99,7 @@ func (h *TaskHandler) list(w http.ResponseWriter, r *http.Request) {
 		UserID: uid, Status: status, Category: category, Limit: limit, Offset: offset,
 	})
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	dtos := make([]taskDTO, len(tasks))
@@ -145,7 +145,7 @@ func (h *TaskHandler) create(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusCreated, toDTO(t))
@@ -164,7 +164,7 @@ func (h *TaskHandler) get(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusNotFound, "NOT_FOUND", "task not found", nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusOK, toDTO(t))
@@ -220,7 +220,7 @@ func (h *TaskHandler) update(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusOK, toDTO(t))
@@ -234,7 +234,7 @@ func (h *TaskHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.Delete(r.Context(), id, uid); err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

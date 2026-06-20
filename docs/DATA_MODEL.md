@@ -84,6 +84,7 @@ Phase 1 は `cmd/keygen -email <email>` で1ユーザー作成、生キーは st
 
 **インデックス**:
 - `(user_id, category, created_at DESC)` — Then vs Now (category facet グロス) の主クエリ
+- `(user_id, category, completed_at DESC) WHERE completed_at IS NOT NULL` — 完了タスク時間 report (00014, H3)
 - `(user_id, status)` — ステータス別取得
 - `(user_id) WHERE deleted_at IS NULL` 部分インデックス
 
@@ -154,8 +155,9 @@ WORK 区間のみ `mode`×`driver` を持ち成長集計に入る。density は�
 **インデックス**:
 - `(user_id, started_at DESC)`
 - `(task_id, started_at DESC)` 部分インデックス (task_id IS NOT NULL)
-- `(user_id) WHERE ended_at IS NULL` — 現在の開区間検索 (高々1行)
-- `(user_id, mode, started_at DESC) WHERE type = 'work'` — グロス集計の主クエリ
+- `(user_id) WHERE ended_at IS NULL` **UNIQUE** (`work_slices_user_open_uniq`) — 単一現在活動の DB backstop (C1)
+- `(user_id, mode, started_at DESC) WHERE type = 'work'` — Today/グロス集計の主クエリ
+- `(user_id, task_id, started_at DESC) WHERE type = 'work' AND ended_at IS NOT NULL` — report JOIN (00014, H3)
 
 ### `frictions` (= 停滞)
 
@@ -254,6 +256,9 @@ backend/db/migrations/
 - `work_slices` に `type` / `driver` / `off_reason` 列追加、`mode` CHECK を 11値 (`study` 追加・review 統合) に張り直し、`density` 列 DROP
 - `frictions` `pattern_tag` CHECK を 11値 (`waiting_ai` 追加) に張り直し、`severity`・`kind` 列 DROP
 - `user_settings` (idle検知 有無+閾値 / 最大区間長 有無+閾値) の追加 — 状態機械の opt-in ガード用
+  (**Phase 1 では migration のみ・Go 未配線 = deferred**。常時ONの復帰確認は client 側 `ActiveSliceCard` に実装)
+- `00014_report_indexes` (review H3): `tasks (user_id, category, completed_at DESC) WHERE completed_at IS NOT NULL` /
+  `work_slices (user_id, task_id, started_at DESC) WHERE type='work' AND ended_at IS NOT NULL`
 
 > ADR 004 の docs では 00009=insights / 00010=density を予定していたが、実在の migration は
 > 00008=density / 00009=pattern_tag で、insights は作られなかった。本書は実在順に整合済み。

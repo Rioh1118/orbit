@@ -7,17 +7,18 @@ export type FrictionPatternTag =
   | "flaky_test"
   | "unclear_spec"
   | "waiting_human"
+  | "waiting_ai"
   | "tool_quirk"
   | "concept_gap";
 
 export interface PatternTagMeta {
   value: FrictionPatternTag;
   label: string;
-  /** 1-key digit used for quick selection in the friction modal. */
+  /** 1-key shortcut used for quick selection in the friction modal. */
   key: string;
 }
 
-// Order chosen so that the first 9 map to digit keys 1-9 and `concept_gap` → 0.
+// Digits 1-9,0 cover the first ten; waiting_ai uses `a`.
 export const PATTERN_TAGS: ReadonlyArray<PatternTagMeta> = [
   { value: "cant_find", label: "cant_find", key: "1" },
   { value: "unexpected_state", label: "unexpected_state", key: "2" },
@@ -29,22 +30,23 @@ export const PATTERN_TAGS: ReadonlyArray<PatternTagMeta> = [
   { value: "waiting_human", label: "waiting_human", key: "8" },
   { value: "tool_quirk", label: "tool_quirk", key: "9" },
   { value: "concept_gap", label: "concept_gap", key: "0" },
+  { value: "waiting_ai", label: "waiting_ai", key: "a" },
 ];
 
-export const PATTERN_TAG_BY_KEY: Record<string, FrictionPatternTag> = PATTERN_TAGS.reduce(
-  (acc, m) => {
-    acc[m.key] = m.value;
-    return acc;
-  },
-  {} as Record<string, FrictionPatternTag>,
-);
+export const PATTERN_TAG_BY_KEY: Record<string, FrictionPatternTag> =
+  PATTERN_TAGS.reduce(
+    (acc, m) => {
+      acc[m.key] = m.value;
+      return acc;
+    },
+    {} as Record<string, FrictionPatternTag>,
+  );
 
 export interface Friction {
   id: string;
   task_id: string | null;
   work_slice_id: string | null;
   pattern_tag: FrictionPatternTag;
-  severity: number;
   description: string;
   resolved_at: string | null;
   resolution_note: string;
@@ -56,7 +58,6 @@ export interface CreateFrictionInput {
   task_id?: string | null;
   work_slice_id?: string | null;
   pattern_tag: FrictionPatternTag;
-  severity?: number;
   description: string;
 }
 
@@ -64,7 +65,6 @@ export interface UpdateFrictionInput {
   task_id?: string | null;
   work_slice_id?: string | null;
   pattern_tag?: FrictionPatternTag;
-  severity?: number;
   description?: string;
   resolution_note?: string;
   resolved?: boolean;

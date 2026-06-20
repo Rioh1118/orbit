@@ -5,7 +5,7 @@ import { TASK_CATEGORIES, type TaskCategory } from "./types";
 export function TaskForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<TaskCategory>("learning");
+  const [category, setCategory] = useState<TaskCategory>("new_feature");
   const create = useCreateTask();
 
   return (
@@ -66,7 +66,9 @@ export function TaskForm() {
         {create.isPending ? "作成中..." : "タスク作成"}
       </button>
       {create.error && (
-        <p className="text-xs text-red-400">{(create.error as Error).message}</p>
+        <p className="text-xs text-red-400">
+          {(create.error as Error).message}
+        </p>
       )}
     </form>
   );

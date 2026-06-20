@@ -38,7 +38,6 @@ type frictionDTO struct {
 	TaskID         *uuid.UUID `json:"task_id"`
 	WorkSliceID    *uuid.UUID `json:"work_slice_id"`
 	PatternTag     string     `json:"pattern_tag"`
-	Severity       int        `json:"severity"`
 	Description    string     `json:"description"`
 	ResolvedAt     *string    `json:"resolved_at"`
 	ResolutionNote string     `json:"resolution_note"`
@@ -52,7 +51,6 @@ func fToDTO(f *friction.Friction) frictionDTO {
 		TaskID:         f.TaskID,
 		WorkSliceID:    f.WorkSliceID,
 		PatternTag:     string(f.PatternTag),
-		Severity:       f.Severity,
 		Description:    f.Description,
 		ResolvedAt:     fmtTimePtr(f.ResolvedAt),
 		ResolutionNote: f.ResolutionNote,
@@ -120,7 +118,7 @@ func (h *FrictionHandler) list(w http.ResponseWriter, r *http.Request) {
 
 	rows, total, err := h.svc.List(r.Context(), in)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	dtos := make([]frictionDTO, len(rows))
@@ -140,7 +138,6 @@ type fCreateReq struct {
 	TaskID      *string `json:"task_id"`
 	WorkSliceID *string `json:"work_slice_id"`
 	PatternTag  string  `json:"pattern_tag"`
-	Severity    int     `json:"severity"`
 	Description string  `json:"description"`
 }
 
@@ -182,7 +179,6 @@ func (h *FrictionHandler) create(w http.ResponseWriter, r *http.Request) {
 		TaskID:      taskID,
 		WorkSliceID: wsID,
 		PatternTag:  tag,
-		Severity:    req.Severity,
 		Description: req.Description,
 	})
 	if err != nil {
@@ -190,7 +186,7 @@ func (h *FrictionHandler) create(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusCreated, fToDTO(f))
@@ -200,7 +196,6 @@ type fUpdateReq struct {
 	TaskID         *string `json:"task_id"`
 	WorkSliceID    *string `json:"work_slice_id"`
 	PatternTag     *string `json:"pattern_tag"`
-	Severity       *int    `json:"severity"`
 	Description    *string `json:"description"`
 	ResolutionNote *string `json:"resolution_note"`
 	Resolved       *bool   `json:"resolved"`
@@ -221,7 +216,6 @@ func (h *FrictionHandler) update(w http.ResponseWriter, r *http.Request) {
 	in := service.FUpdateInput{
 		ID:             id,
 		UserID:         uid,
-		Severity:       req.Severity,
 		Description:    req.Description,
 		ResolutionNote: req.ResolutionNote,
 		Resolve:        req.Resolved,
@@ -264,7 +258,7 @@ func (h *FrictionHandler) update(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusOK, fToDTO(f))
@@ -278,7 +272,7 @@ func (h *FrictionHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.Delete(r.Context(), id, uid); err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -286,7 +280,6 @@ func (h *FrictionHandler) delete(w http.ResponseWriter, r *http.Request) {
 
 func isFrictionValidationErr(err error) bool {
 	return errors.Is(err, friction.ErrInvalidPatternTag) ||
-		errors.Is(err, friction.ErrInvalidSeverity) ||
 		errors.Is(err, friction.ErrDescriptionEmpty) ||
 		errors.Is(err, friction.ErrDescriptionLong) ||
 		errors.Is(err, friction.ErrResolutionLong)

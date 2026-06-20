@@ -52,9 +52,9 @@ func (q *Queries) CountFrictions(ctx context.Context, arg CountFrictionsParams) 
 }
 
 const createFriction = `-- name: CreateFriction :one
-INSERT INTO frictions (id, user_id, task_id, work_slice_id, pattern_tag, severity, description)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, user_id, task_id, work_slice_id, kind, severity, description, resolved_at, resolution_note, metadata, created_at, updated_at, pattern_tag
+INSERT INTO frictions (id, user_id, task_id, work_slice_id, pattern_tag, description)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, user_id, task_id, work_slice_id, description, resolved_at, resolution_note, metadata, created_at, updated_at, pattern_tag
 `
 
 type CreateFrictionParams struct {
@@ -63,7 +63,6 @@ type CreateFrictionParams struct {
 	TaskID      pgtype.UUID `json:"task_id"`
 	WorkSliceID pgtype.UUID `json:"work_slice_id"`
 	PatternTag  string      `json:"pattern_tag"`
-	Severity    int32       `json:"severity"`
 	Description string      `json:"description"`
 }
 
@@ -74,7 +73,6 @@ func (q *Queries) CreateFriction(ctx context.Context, arg CreateFrictionParams) 
 		arg.TaskID,
 		arg.WorkSliceID,
 		arg.PatternTag,
-		arg.Severity,
 		arg.Description,
 	)
 	var i Friction
@@ -83,8 +81,6 @@ func (q *Queries) CreateFriction(ctx context.Context, arg CreateFrictionParams) 
 		&i.UserID,
 		&i.TaskID,
 		&i.WorkSliceID,
-		&i.Kind,
-		&i.Severity,
 		&i.Description,
 		&i.ResolvedAt,
 		&i.ResolutionNote,
@@ -111,7 +107,7 @@ func (q *Queries) DeleteFriction(ctx context.Context, arg DeleteFrictionParams) 
 }
 
 const getFriction = `-- name: GetFriction :one
-SELECT id, user_id, task_id, work_slice_id, kind, severity, description, resolved_at, resolution_note, metadata, created_at, updated_at, pattern_tag FROM frictions
+SELECT id, user_id, task_id, work_slice_id, description, resolved_at, resolution_note, metadata, created_at, updated_at, pattern_tag FROM frictions
 WHERE id = $1 AND user_id = $2
 LIMIT 1
 `
@@ -129,8 +125,6 @@ func (q *Queries) GetFriction(ctx context.Context, arg GetFrictionParams) (Frict
 		&i.UserID,
 		&i.TaskID,
 		&i.WorkSliceID,
-		&i.Kind,
-		&i.Severity,
 		&i.Description,
 		&i.ResolvedAt,
 		&i.ResolutionNote,
@@ -143,7 +137,7 @@ func (q *Queries) GetFriction(ctx context.Context, arg GetFrictionParams) (Frict
 }
 
 const listFrictions = `-- name: ListFrictions :many
-SELECT id, user_id, task_id, work_slice_id, kind, severity, description, resolved_at, resolution_note, metadata, created_at, updated_at, pattern_tag FROM frictions
+SELECT id, user_id, task_id, work_slice_id, description, resolved_at, resolution_note, metadata, created_at, updated_at, pattern_tag FROM frictions
 WHERE user_id = $1
   AND ($4::uuid IS NULL OR task_id = $4)
   AND ($5::uuid IS NULL OR work_slice_id = $5)
@@ -195,8 +189,6 @@ func (q *Queries) ListFrictions(ctx context.Context, arg ListFrictionsParams) ([
 			&i.UserID,
 			&i.TaskID,
 			&i.WorkSliceID,
-			&i.Kind,
-			&i.Severity,
 			&i.Description,
 			&i.ResolvedAt,
 			&i.ResolutionNote,
@@ -220,13 +212,12 @@ UPDATE frictions
 SET task_id = $3,
     work_slice_id = $4,
     pattern_tag = $5,
-    severity = $6,
-    description = $7,
-    resolved_at = $8,
-    resolution_note = $9,
+    description = $6,
+    resolved_at = $7,
+    resolution_note = $8,
     updated_at = now()
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, task_id, work_slice_id, kind, severity, description, resolved_at, resolution_note, metadata, created_at, updated_at, pattern_tag
+RETURNING id, user_id, task_id, work_slice_id, description, resolved_at, resolution_note, metadata, created_at, updated_at, pattern_tag
 `
 
 type UpdateFrictionParams struct {
@@ -235,7 +226,6 @@ type UpdateFrictionParams struct {
 	TaskID         pgtype.UUID        `json:"task_id"`
 	WorkSliceID    pgtype.UUID        `json:"work_slice_id"`
 	PatternTag     string             `json:"pattern_tag"`
-	Severity       int32              `json:"severity"`
 	Description    string             `json:"description"`
 	ResolvedAt     pgtype.Timestamptz `json:"resolved_at"`
 	ResolutionNote *string            `json:"resolution_note"`
@@ -248,7 +238,6 @@ func (q *Queries) UpdateFriction(ctx context.Context, arg UpdateFrictionParams) 
 		arg.TaskID,
 		arg.WorkSliceID,
 		arg.PatternTag,
-		arg.Severity,
 		arg.Description,
 		arg.ResolvedAt,
 		arg.ResolutionNote,
@@ -259,8 +248,6 @@ func (q *Queries) UpdateFriction(ctx context.Context, arg UpdateFrictionParams) 
 		&i.UserID,
 		&i.TaskID,
 		&i.WorkSliceID,
-		&i.Kind,
-		&i.Severity,
 		&i.Description,
 		&i.ResolvedAt,
 		&i.ResolutionNote,

@@ -24,8 +24,6 @@ type Friction struct {
 	UserID         pgtype.UUID        `json:"user_id"`
 	TaskID         pgtype.UUID        `json:"task_id"`
 	WorkSliceID    pgtype.UUID        `json:"work_slice_id"`
-	Kind           *string            `json:"kind"`
-	Severity       int32              `json:"severity"`
 	Description    string             `json:"description"`
 	ResolvedAt     pgtype.Timestamptz `json:"resolved_at"`
 	ResolutionNote *string            `json:"resolution_note"`
@@ -61,11 +59,21 @@ type User struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
+type UserSetting struct {
+	UserID            pgtype.UUID        `json:"user_id"`
+	IdleCheckEnabled  bool               `json:"idle_check_enabled"`
+	IdleThresholdMin  *int32             `json:"idle_threshold_min"`
+	MaxSegmentEnabled bool               `json:"max_segment_enabled"`
+	MaxSegmentMin     *int32             `json:"max_segment_min"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
 type WorkSlice struct {
 	ID          pgtype.UUID        `json:"id"`
 	UserID      pgtype.UUID        `json:"user_id"`
 	TaskID      pgtype.UUID        `json:"task_id"`
-	Mode        string             `json:"mode"`
+	Mode        *string            `json:"mode"`
 	StartedAt   pgtype.Timestamptz `json:"started_at"`
 	EndedAt     pgtype.Timestamptz `json:"ended_at"`
 	DurationSec *int32             `json:"duration_sec"`
@@ -73,5 +81,7 @@ type WorkSlice struct {
 	Metadata    []byte             `json:"metadata"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	Density     *int32             `json:"density"`
+	Type        string             `json:"type"`
+	Driver      *string            `json:"driver"`
+	OffReason   *string            `json:"off_reason"`
 }

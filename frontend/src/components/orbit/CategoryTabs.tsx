@@ -1,5 +1,4 @@
 export const CATEGORIES = [
-  { value: "learning", label: "learning" },
   { value: "new_feature", label: "new feature" },
   { value: "bug_fix", label: "bug fix" },
   { value: "refactor", label: "refactor" },

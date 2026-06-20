@@ -12,6 +12,8 @@ import (
 
 type Querier interface {
 	CountFrictions(ctx context.Context, arg CountFrictionsParams) (int64, error)
+	// stall counts per (week, pattern_tag) for a category (frictions linked to that category's tasks).
+	CountFrictionsByCategoryPatternWeek(ctx context.Context, arg CountFrictionsByCategoryPatternWeekParams) ([]CountFrictionsByCategoryPatternWeekRow, error)
 	CountTasks(ctx context.Context, userID pgtype.UUID) (int64, error)
 	CountTasksByCategory(ctx context.Context, arg CountTasksByCategoryParams) (int64, error)
 	CountTasksByStatus(ctx context.Context, arg CountTasksByStatusParams) (int64, error)
@@ -24,6 +26,8 @@ type Querier interface {
 	DeleteFriction(ctx context.Context, arg DeleteFrictionParams) error
 	DeleteWorkSlice(ctx context.Context, arg DeleteWorkSliceParams) error
 	GetFriction(ctx context.Context, arg GetFrictionParams) (Friction, error)
+	// The single currently-open segment (state machine: at most one per user).
+	GetOpenWorkSlice(ctx context.Context, userID pgtype.UUID) (WorkSlice, error)
 	GetTask(ctx context.Context, arg GetTaskParams) (Task, error)
 	GetUserByAPIKeyPrefix(ctx context.Context, apiKeyPrefix string) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -37,9 +41,15 @@ type Querier interface {
 	ListTasksByStatusAndCategory(ctx context.Context, arg ListTasksByStatusAndCategoryParams) ([]Task, error)
 	ListWorkSlices(ctx context.Context, arg ListWorkSlicesParams) ([]WorkSlice, error)
 	SoftDeleteTask(ctx context.Context, arg SoftDeleteTaskParams) error
-	// Sum durations by mode for ended slices within [from, to).
-	// Treats in-progress slices (ended_at NULL) as 0 to keep the query stable.
-	SumWorkSlicesByModeInRange(ctx context.Context, arg SumWorkSlicesByModeInRangeParams) ([]SumWorkSlicesByModeInRangeRow, error)
+	// "completion time down": per week, count of completed tasks and their total own WORK time.
+	// avg own-time per task = total_seconds / task_count (computed in the service).
+	SumCompletedTaskTimeByCategoryWeek(ctx context.Context, arg SumCompletedTaskTimeByCategoryWeekParams) ([]SumCompletedTaskTimeByCategoryWeekRow, error)
+	// Then vs Now: gross aggregations over {category × time window}, week-bucketed (ADR 005).
+	// Week boundaries are cut in the client timezone (tz param), per DATA_MODEL.md.
+	// mode distribution shift: total WORK seconds per (week, mode) for a category.
+	SumWorkByCategoryModeWeek(ctx context.Context, arg SumWorkByCategoryModeWeekParams) ([]SumWorkByCategoryModeWeekRow, error)
+	// Today distribution: total work seconds per mode for ended WORK segments in [from, to).
+	SumWorkModeInRange(ctx context.Context, arg SumWorkModeInRangeParams) ([]SumWorkModeInRangeRow, error)
 	UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) (User, error)
 	UpdateFriction(ctx context.Context, arg UpdateFrictionParams) (Friction, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)

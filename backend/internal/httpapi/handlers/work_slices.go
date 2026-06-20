@@ -28,7 +28,10 @@ func (h *WorkSliceHandler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Get("/", h.list)
 	r.Get("/active", h.active)
+	r.Get("/current", h.current)
 	r.Post("/start", h.start)
+	r.Post("/start-off", h.startOff)
+	r.Post("/stop", h.stop)
 	r.Post("/{id}/end", h.end)
 	r.Patch("/{id}", h.update)
 	r.Delete("/{id}", h.delete)
@@ -38,11 +41,13 @@ func (h *WorkSliceHandler) Routes() http.Handler {
 type workSliceDTO struct {
 	ID          uuid.UUID  `json:"id"`
 	TaskID      *uuid.UUID `json:"task_id"`
+	Type        string     `json:"type"`
 	Mode        string     `json:"mode"`
+	Driver      string     `json:"driver"`
+	OffReason   string     `json:"off_reason"`
 	StartedAt   string     `json:"started_at"`
 	EndedAt     *string    `json:"ended_at"`
 	DurationSec *int       `json:"duration_sec"`
-	Density     *int       `json:"density"`
 	Note        string     `json:"note"`
 	CreatedAt   string     `json:"created_at"`
 	UpdatedAt   string     `json:"updated_at"`
@@ -52,11 +57,13 @@ func wsToDTO(w *workslice.WorkSlice) workSliceDTO {
 	return workSliceDTO{
 		ID:          w.ID,
 		TaskID:      w.TaskID,
+		Type:        string(w.Type),
 		Mode:        string(w.Mode),
+		Driver:      string(w.Driver),
+		OffReason:   string(w.OffReason),
 		StartedAt:   w.StartedAt.UTC().Format(time.RFC3339),
 		EndedAt:     fmtTimePtr(w.EndedAt),
 		DurationSec: w.DurationSec,
-		Density:     w.Density,
 		Note:        w.Note,
 		CreatedAt:   w.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:   w.UpdatedAt.UTC().Format(time.RFC3339),
@@ -72,6 +79,17 @@ func parseRFC3339Ptr(s string) (*time.Time, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+// isWSValidationErr maps domain validation errors to a 400.
+func isWSValidationErr(err error) bool {
+	return errors.Is(err, workslice.ErrInvalidType) ||
+		errors.Is(err, workslice.ErrInvalidMode) ||
+		errors.Is(err, workslice.ErrInvalidDriver) ||
+		errors.Is(err, workslice.ErrInvalidOffReason) ||
+		errors.Is(err, workslice.ErrLayerMismatch) ||
+		errors.Is(err, workslice.ErrNoteTooLong) ||
+		errors.Is(err, workslice.ErrEndBeforeStart)
 }
 
 func (h *WorkSliceHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +133,7 @@ func (h *WorkSliceHandler) list(w http.ResponseWriter, r *http.Request) {
 		UserID: uid, TaskID: taskID, Mode: mode, From: from, To: to, Limit: limit, Offset: offset,
 	})
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	dtos := make([]workSliceDTO, len(slices))
@@ -135,7 +153,7 @@ func (h *WorkSliceHandler) active(w http.ResponseWriter, r *http.Request) {
 	uid, _ := appmw.UserIDFromCtx(r.Context())
 	slices, err := h.svc.ListActive(r.Context(), uid)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	dtos := make([]workSliceDTO, len(slices))
@@ -145,8 +163,24 @@ func (h *WorkSliceHandler) active(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, dtos)
 }
 
+// current returns the single open segment, or null when not working.
+func (h *WorkSliceHandler) current(w http.ResponseWriter, r *http.Request) {
+	uid, _ := appmw.UserIDFromCtx(r.Context())
+	cur, err := h.svc.Current(r.Context(), uid)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
+		return
+	}
+	if cur == nil {
+		response.Success(w, http.StatusOK, nil)
+		return
+	}
+	response.Success(w, http.StatusOK, wsToDTO(cur))
+}
+
 type startReq struct {
 	Mode   string  `json:"mode"`
+	Driver string  `json:"driver"`
 	TaskID *string `json:"task_id"`
 	Note   string  `json:"note"`
 }
@@ -172,22 +206,75 @@ func (h *WorkSliceHandler) start(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid mode", map[string]any{"field": "mode"})
 		return
 	}
+	driver := workslice.Driver(req.Driver)
+	if req.Driver != "" && !driver.Valid() {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid driver", map[string]any{"field": "driver"})
+		return
+	}
 	slice, err := h.svc.Start(r.Context(), service.WSStartInput{
-		UserID: uid, TaskID: taskID, Mode: mode, Note: req.Note,
+		UserID: uid, TaskID: taskID, Mode: mode, Driver: driver, Note: req.Note,
 	})
 	if err != nil {
-		if errors.Is(err, workslice.ErrInvalidMode) || errors.Is(err, workslice.ErrNoteTooLong) {
+		if errors.Is(err, repo.ErrOpenSegmentConflict) {
+			response.Error(w, http.StatusConflict, "CONFLICT", "another segment is already open", nil)
+			return
+		}
+		if isWSValidationErr(err) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "could not start segment", nil)
 		return
 	}
 	response.Success(w, http.StatusCreated, wsToDTO(slice))
 }
 
-type endReq struct {
-	Density *int `json:"density"`
+type startOffReq struct {
+	Reason string `json:"reason"`
+	Note   string `json:"note"`
+}
+
+func (h *WorkSliceHandler) startOff(w http.ResponseWriter, r *http.Request) {
+	uid, _ := appmw.UserIDFromCtx(r.Context())
+	var req startOffReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid json", nil)
+		return
+	}
+	reason := workslice.OffReason(req.Reason)
+	if !reason.Valid() {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid reason", map[string]any{"field": "reason"})
+		return
+	}
+	slice, err := h.svc.StartOff(r.Context(), service.WSStartOffInput{UserID: uid, Reason: reason, Note: req.Note})
+	if err != nil {
+		if errors.Is(err, repo.ErrOpenSegmentConflict) {
+			response.Error(w, http.StatusConflict, "CONFLICT", "another segment is already open", nil)
+			return
+		}
+		if isWSValidationErr(err) {
+			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "could not start segment", nil)
+		return
+	}
+	response.Success(w, http.StatusCreated, wsToDTO(slice))
+}
+
+// stop closes the open segment without opening a new one ("作業終了").
+func (h *WorkSliceHandler) stop(w http.ResponseWriter, r *http.Request) {
+	uid, _ := appmw.UserIDFromCtx(r.Context())
+	slice, err := h.svc.Stop(r.Context(), uid)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
+		return
+	}
+	if slice == nil {
+		response.Success(w, http.StatusOK, nil)
+		return
+	}
+	response.Success(w, http.StatusOK, wsToDTO(slice))
 }
 
 func (h *WorkSliceHandler) end(w http.ResponseWriter, r *http.Request) {
@@ -197,14 +284,7 @@ func (h *WorkSliceHandler) end(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid id", nil)
 		return
 	}
-	var req endReq
-	if r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid json", nil)
-			return
-		}
-	}
-	slice, err := h.svc.End(r.Context(), service.WSEndInput{ID: id, UserID: uid, Density: req.Density})
+	slice, err := h.svc.End(r.Context(), service.WSEndInput{ID: id, UserID: uid})
 	if err != nil {
 		if errors.Is(err, repo.ErrWorkSliceNotFound) {
 			response.Error(w, http.StatusNotFound, "NOT_FOUND", "work slice not found", nil)
@@ -214,11 +294,11 @@ func (h *WorkSliceHandler) end(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusConflict, "CONFLICT", err.Error(), nil)
 			return
 		}
-		if errors.Is(err, workslice.ErrInvalidDensity) || errors.Is(err, workslice.ErrEndBeforeStart) {
+		if isWSValidationErr(err) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusOK, wsToDTO(slice))
@@ -226,10 +306,10 @@ func (h *WorkSliceHandler) end(w http.ResponseWriter, r *http.Request) {
 
 type wsUpdateReq struct {
 	Mode      *string `json:"mode"`
+	Driver    *string `json:"driver"`
 	TaskID    *string `json:"task_id"`
 	StartedAt *string `json:"started_at"`
 	EndedAt   *string `json:"ended_at"`
-	Density   *int    `json:"density"`
 	Note      *string `json:"note"`
 }
 
@@ -245,10 +325,14 @@ func (h *WorkSliceHandler) update(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", "invalid json", nil)
 		return
 	}
-	in := service.WSUpdateInput{ID: id, UserID: uid, Density: req.Density, Note: req.Note}
+	in := service.WSUpdateInput{ID: id, UserID: uid, Note: req.Note}
 	if req.Mode != nil {
 		m := workslice.Mode(*req.Mode)
 		in.Mode = &m
+	}
+	if req.Driver != nil {
+		d := workslice.Driver(*req.Driver)
+		in.Driver = &d
 	}
 	if req.TaskID != nil {
 		if *req.TaskID == "" {
@@ -284,12 +368,11 @@ func (h *WorkSliceHandler) update(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusNotFound, "NOT_FOUND", "work slice not found", nil)
 			return
 		}
-		if errors.Is(err, workslice.ErrInvalidMode) || errors.Is(err, workslice.ErrInvalidDensity) ||
-			errors.Is(err, workslice.ErrEndBeforeStart) || errors.Is(err, workslice.ErrNoteTooLong) {
+		if isWSValidationErr(err) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusOK, wsToDTO(slice))
@@ -303,7 +386,7 @@ func (h *WorkSliceHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.Delete(r.Context(), id, uid); err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
