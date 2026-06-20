@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { KeyCap } from "@/components/ui/KeyCap";
 import { useTasks } from "@/features/tasks/hooks";
-import { useStartSlice } from "./hooks";
-import { SLICE_MODES, SLICE_MODE_BY_KEY, type SliceMode } from "./types";
+import { useStartSession } from "./hooks";
+import { SESSION_MODES, SESSION_MODE_BY_KEY, type SessionMode } from "./types";
 
 interface Props {
   disabled?: boolean;
 }
 
 export function ModeSelector({ disabled }: Props) {
-  const start = useStartSlice();
+  const start = useStartSession();
   const { data: tasksResp } = useTasks();
   const [taskId, setTaskId] = useState<string>("");
 
@@ -19,7 +19,7 @@ export function ModeSelector({ disabled }: Props) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
-      const mode = SLICE_MODE_BY_KEY[e.key.toLowerCase()];
+      const mode = SESSION_MODE_BY_KEY[e.key.toLowerCase()];
       if (!mode) return;
       e.preventDefault();
       void start.mutateAsync({ mode, task_id: taskId || null });
@@ -28,16 +28,16 @@ export function ModeSelector({ disabled }: Props) {
     return () => window.removeEventListener("keydown", handler);
   }, [disabled, start, taskId]);
 
-  const startMode = (mode: SliceMode) => start.mutate({ mode, task_id: taskId || null });
+  const startMode = (mode: SessionMode) => start.mutate({ mode, task_id: taskId || null });
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <label htmlFor="slice-task" className="font-mono text-xs uppercase tracking-instrument text-mist">
+        <label htmlFor="session-task" className="font-mono text-xs uppercase tracking-instrument text-mist">
           task
         </label>
         <select
-          id="slice-task"
+          id="session-task"
           value={taskId}
           onChange={(e) => setTaskId(e.target.value)}
           className="rounded border border-instrument/40 bg-surface px-2 py-1 text-sm text-parchment"
@@ -51,7 +51,7 @@ export function ModeSelector({ disabled }: Props) {
         </select>
       </div>
       <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {SLICE_MODES.map((m) => (
+        {SESSION_MODES.map((m) => (
           <li key={m.value}>
             <button
               type="button"

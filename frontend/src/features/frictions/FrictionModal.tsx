@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { KeyCap } from "@/components/ui/KeyCap";
-import { useActiveSlices } from "@/features/slices/hooks";
+import { useActiveSessions } from "@/features/sessions/hooks";
 import { useCreateFriction } from "./hooks";
 import {
   PATTERN_TAGS,
@@ -17,7 +17,7 @@ const SEVERITIES = [1, 2, 3] as const;
 
 export function FrictionModal({ open, onClose }: Props) {
   const create = useCreateFriction();
-  const { data: actives } = useActiveSlices();
+  const { data: actives } = useActiveSessions();
   const [tag, setTag] = useState<FrictionPatternTag | null>(null);
   const [severity, setSeverity] = useState<number>(1);
   const [description, setDescription] = useState("");
@@ -58,7 +58,7 @@ export function FrictionModal({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  const activeSlice = actives?.[0];
+  const activeSession = actives?.[0];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +68,8 @@ export function FrictionModal({ open, onClose }: Props) {
       pattern_tag: tag,
       severity,
       description: description.trim(),
-      work_slice_id: activeSlice?.id ?? null,
-      task_id: activeSlice?.task_id ?? null,
+      work_session_id: activeSession?.id ?? null,
+      task_id: activeSession?.task_id ?? null,
     });
     onClose();
   };
@@ -157,9 +157,9 @@ export function FrictionModal({ open, onClose }: Props) {
 
         <div className="flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-instrument text-mist">
-            {activeSlice
-              ? `linked to active slice (${activeSlice.mode})`
-              : "no active slice — friction will be unlinked"}
+            {activeSession
+              ? `linked to active session (${activeSession.mode})`
+              : "no active session — friction will be unlinked"}
           </p>
           <div className="flex gap-2">
             <button

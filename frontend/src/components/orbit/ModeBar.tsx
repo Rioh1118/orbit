@@ -1,7 +1,7 @@
 import { KeyCap } from "@/components/ui/KeyCap";
 import { modeColors } from "@/lib/chartTheme";
 
-interface ModeSlice {
+interface ModeSession {
   modeKey: string;
   mode: string;
   label: string;
@@ -9,11 +9,11 @@ interface ModeSlice {
 }
 
 interface ModeBarProps {
-  slices: ModeSlice[];
+  sessions: ModeSession[];
 }
 
-export function ModeBar({ slices }: ModeBarProps) {
-  const sorted = [...slices].sort((a, b) => b.pct - a.pct);
+export function ModeBar({ sessions }: ModeBarProps) {
+  const sorted = [...sessions].sort((a, b) => b.pct - a.pct);
 
   return (
     <ul className="space-y-2">

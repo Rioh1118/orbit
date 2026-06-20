@@ -22,7 +22,7 @@ func NewFrictionService(r *repo.FrictionRepo) *FrictionService {
 type FListInput struct {
 	UserID      uuid.UUID
 	TaskID      *uuid.UUID
-	WorkSliceID *uuid.UUID
+	WorkSessionID *uuid.UUID
 	PatternTag  *friction.PatternTag
 	Resolved    *bool
 	From        *time.Time
@@ -42,7 +42,7 @@ func (s *FrictionService) List(ctx context.Context, in FListInput) ([]*friction.
 	return s.repo.List(ctx, repo.ListFrictionsParams{
 		UserID:      in.UserID,
 		TaskID:      in.TaskID,
-		WorkSliceID: in.WorkSliceID,
+		WorkSessionID: in.WorkSessionID,
 		PatternTag:  in.PatternTag,
 		Resolved:    in.Resolved,
 		From:        in.From,
@@ -59,7 +59,7 @@ func (s *FrictionService) Get(ctx context.Context, id, userID uuid.UUID) (*frict
 type FCreateInput struct {
 	UserID      uuid.UUID
 	TaskID      *uuid.UUID
-	WorkSliceID *uuid.UUID
+	WorkSessionID *uuid.UUID
 	PatternTag  friction.PatternTag
 	Severity    int
 	Description string
@@ -78,7 +78,7 @@ func (s *FrictionService) Create(ctx context.Context, in FCreateInput) (*frictio
 		ID:          id,
 		UserID:      in.UserID,
 		TaskID:      in.TaskID,
-		WorkSliceID: in.WorkSliceID,
+		WorkSessionID: in.WorkSessionID,
 		PatternTag:  in.PatternTag,
 		Severity:    severity,
 		Description: in.Description,
@@ -94,8 +94,8 @@ type FUpdateInput struct {
 	UserID          uuid.UUID
 	TaskID          *uuid.UUID
 	ClearTaskID     bool
-	WorkSliceID     *uuid.UUID
-	ClearWorkSlice  bool
+	WorkSessionID     *uuid.UUID
+	ClearWorkSession  bool
 	PatternTag      *friction.PatternTag
 	Severity        *int
 	Description     *string
@@ -114,10 +114,10 @@ func (s *FrictionService) Update(ctx context.Context, in FUpdateInput) (*frictio
 	} else if in.TaskID != nil {
 		f.TaskID = in.TaskID
 	}
-	if in.ClearWorkSlice {
-		f.WorkSliceID = nil
-	} else if in.WorkSliceID != nil {
-		f.WorkSliceID = in.WorkSliceID
+	if in.ClearWorkSession {
+		f.WorkSessionID = nil
+	} else if in.WorkSessionID != nil {
+		f.WorkSessionID = in.WorkSessionID
 	}
 	if in.PatternTag != nil {
 		if !in.PatternTag.Valid() {

@@ -29,7 +29,7 @@ pnpm dev    # http://localhost:5173
 src/
   api/         # APIクライアント (fetch wrapper + envelope展開)
   components/  # 汎用UI
-  features/    # 機能単位 (tasks / slices / frictions / reports / settings)
+  features/    # 機能単位 (tasks / sessions / frictions / reports / settings)
   hooks/       # 共通カスタムフック
   lib/         # 純粋ユーティリティ
   pages/       # ルートに対応するページ

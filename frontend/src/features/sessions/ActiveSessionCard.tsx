@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { ActiveSliceBanner } from "@/components/orbit/ActiveSliceBanner";
+import { ActiveSessionBanner } from "@/components/orbit/ActiveSessionBanner";
 import { KeyCap } from "@/components/ui/KeyCap";
 import { useTasks } from "@/features/tasks/hooks";
-import { useActiveSlices, useEndSlice } from "./hooks";
-import { SLICE_MODE_META, type WorkSlice } from "./types";
+import { useActiveSessions, useEndSession } from "./hooks";
+import { SESSION_MODE_META, type WorkSession } from "./types";
 
 const DENSITIES = [1, 2, 3, 4, 5] as const;
 
@@ -38,10 +38,10 @@ function elapsedMinutes(startedAt: string, now: number): number {
   return Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 60000));
 }
 
-export function ActiveSliceCard() {
-  const { data: actives, isLoading } = useActiveSlices();
+export function ActiveSessionCard() {
+  const { data: actives, isLoading } = useActiveSessions();
   const { data: tasksResp } = useTasks();
-  const end = useEndSlice();
+  const end = useEndSession();
   const [now, setNow] = useState(() => Date.now());
   const [pendingEndId, setPendingEndId] = useState<string | null>(null);
 
@@ -50,7 +50,7 @@ export function ActiveSliceCard() {
     return () => clearInterval(id);
   }, []);
 
-  const slice: WorkSlice | undefined = actives?.[0];
+  const session: WorkSession | undefined = actives?.[0];
 
   useEffect(() => {
     if (!pendingEndId) return;
@@ -74,34 +74,34 @@ export function ActiveSliceCard() {
     return () => window.removeEventListener("keydown", handler);
   }, [pendingEndId, end]);
 
-  if (isLoading) return <p className="text-sm text-mist">loading active slice…</p>;
-  if (!slice) {
+  if (isLoading) return <p className="text-sm text-mist">loading active session…</p>;
+  if (!session) {
     return (
       <p className="font-mono text-xs uppercase tracking-instrument text-mist">
-        no active slice — pick a mode below to start
+        no active session — pick a mode below to start
       </p>
     );
   }
 
-  const meta = SLICE_MODE_META[slice.mode];
-  const taskTitle = slice.task_id
-    ? (tasksResp?.data.find((t) => t.id === slice.task_id)?.title ?? "—")
+  const meta = SESSION_MODE_META[session.mode];
+  const taskTitle = session.task_id
+    ? (tasksResp?.data.find((t) => t.id === session.task_id)?.title ?? "—")
     : "(no task)";
 
   return (
     <div className="space-y-3">
-      <ActiveSliceBanner
+      <ActiveSessionBanner
         taskTitle={taskTitle}
-        mode={slice.mode}
+        mode={session.mode}
         modeKey={meta?.key ?? "?"}
-        elapsedMinutes={elapsedMinutes(slice.started_at, now)}
+        elapsedMinutes={elapsedMinutes(session.started_at, now)}
       />
-      {pendingEndId === slice.id ? (
+      {pendingEndId === session.id ? (
         <DensityPicker
           disabled={end.isPending}
           onPick={(d) =>
             end.mutate(
-              { id: slice.id, input: { density: d } },
+              { id: session.id, input: { density: d } },
               { onSettled: () => setPendingEndId(null) },
             )
           }
@@ -110,14 +110,14 @@ export function ActiveSliceCard() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setPendingEndId(slice.id)}
+            onClick={() => setPendingEndId(session.id)}
             className="rounded border border-instrument/40 bg-surface px-3 py-1.5 text-sm text-parchment hover:border-instrument"
           >
-            end slice
+            end session
           </button>
           <button
             type="button"
-            onClick={() => end.mutate({ id: slice.id, input: {} })}
+            onClick={() => end.mutate({ id: session.id, input: {} })}
             className="font-mono text-xs uppercase tracking-instrument text-mist hover:text-parchment"
           >
             end without density

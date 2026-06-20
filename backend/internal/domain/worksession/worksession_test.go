@@ -1,4 +1,4 @@
-package workslice
+package worksession
 
 import (
 	"testing"
@@ -26,7 +26,7 @@ func TestEnd(t *testing.T) {
 	end := start.Add(30 * time.Minute)
 	density := 4
 
-	w := &WorkSlice{ID: uuid.New(), UserID: uuid.New(), Mode: ModeCodeExplore, StartedAt: start}
+	w := &WorkSession{ID: uuid.New(), UserID: uuid.New(), Mode: ModeCodeExplore, StartedAt: start}
 	if err := w.End(end, &density); err != nil {
 		t.Fatalf("End: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestEnd(t *testing.T) {
 		t.Errorf("expected ErrAlreadyEnded, got %v", err)
 	}
 
-	bad := &WorkSlice{Mode: ModeCodeExplore, StartedAt: start}
+	bad := &WorkSession{Mode: ModeCodeExplore, StartedAt: start}
 	if err := bad.End(start.Add(-1*time.Minute), nil); err != ErrEndBeforeStart {
 		t.Errorf("expected ErrEndBeforeStart, got %v", err)
 	}
@@ -58,12 +58,12 @@ func TestValidate(t *testing.T) {
 	start := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
 	cases := []struct {
 		name string
-		w    WorkSlice
+		w    WorkSession
 		want error
 	}{
-		{"valid", WorkSlice{Mode: ModeCodeExplore, StartedAt: start}, nil},
-		{"invalid mode", WorkSlice{Mode: "garbage", StartedAt: start}, ErrInvalidMode},
-		{"zero start", WorkSlice{Mode: ModeCodeExplore}, ErrZeroStartedAt},
+		{"valid", WorkSession{Mode: ModeCodeExplore, StartedAt: start}, nil},
+		{"invalid mode", WorkSession{Mode: "garbage", StartedAt: start}, ErrInvalidMode},
+		{"zero start", WorkSession{Mode: ModeCodeExplore}, ErrZeroStartedAt},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
