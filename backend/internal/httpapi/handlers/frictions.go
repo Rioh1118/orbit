@@ -118,7 +118,7 @@ func (h *FrictionHandler) list(w http.ResponseWriter, r *http.Request) {
 
 	rows, total, err := h.svc.List(r.Context(), in)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	dtos := make([]frictionDTO, len(rows))
@@ -186,7 +186,7 @@ func (h *FrictionHandler) create(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusCreated, fToDTO(f))
@@ -258,7 +258,7 @@ func (h *FrictionHandler) update(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusOK, fToDTO(f))
@@ -272,7 +272,7 @@ func (h *FrictionHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.Delete(r.Context(), id, uid); err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

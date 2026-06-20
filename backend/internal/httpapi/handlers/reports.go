@@ -77,7 +77,7 @@ func (h *ReportHandler) thenVsNow(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 

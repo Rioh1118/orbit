@@ -133,7 +133,7 @@ func (h *WorkSliceHandler) list(w http.ResponseWriter, r *http.Request) {
 		UserID: uid, TaskID: taskID, Mode: mode, From: from, To: to, Limit: limit, Offset: offset,
 	})
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	dtos := make([]workSliceDTO, len(slices))
@@ -153,7 +153,7 @@ func (h *WorkSliceHandler) active(w http.ResponseWriter, r *http.Request) {
 	uid, _ := appmw.UserIDFromCtx(r.Context())
 	slices, err := h.svc.ListActive(r.Context(), uid)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	dtos := make([]workSliceDTO, len(slices))
@@ -168,7 +168,7 @@ func (h *WorkSliceHandler) current(w http.ResponseWriter, r *http.Request) {
 	uid, _ := appmw.UserIDFromCtx(r.Context())
 	cur, err := h.svc.Current(r.Context(), uid)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	if cur == nil {
@@ -267,7 +267,7 @@ func (h *WorkSliceHandler) stop(w http.ResponseWriter, r *http.Request) {
 	uid, _ := appmw.UserIDFromCtx(r.Context())
 	slice, err := h.svc.Stop(r.Context(), uid)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	if slice == nil {
@@ -298,7 +298,7 @@ func (h *WorkSliceHandler) end(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusOK, wsToDTO(slice))
@@ -372,7 +372,7 @@ func (h *WorkSliceHandler) update(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	response.Success(w, http.StatusOK, wsToDTO(slice))
@@ -386,7 +386,7 @@ func (h *WorkSliceHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.Delete(r.Context(), id, uid); err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error", nil)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

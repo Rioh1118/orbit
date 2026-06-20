@@ -57,6 +57,8 @@ DELETE FROM work_slices WHERE id = $1 AND user_id = $2;
 
 -- name: SumWorkModeInRange :many
 -- Today distribution: total work seconds per mode for ended WORK segments in [from, to).
+-- Intentionally NOT category-faceted (review M7): Today is the whole day's craft mix,
+-- distinct from the ADR-criticized cross-task report (which is category-faceted in reports.sql).
 SELECT mode, COALESCE(SUM(duration_sec), 0)::bigint AS total_seconds
 FROM work_slices
 WHERE user_id = $1

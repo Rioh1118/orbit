@@ -1,5 +1,9 @@
 -- Then vs Now: gross aggregations over {category × time window}, week-bucketed (ADR 005).
 -- Week boundaries are cut in the client timezone (tz param), per DATA_MODEL.md.
+-- NOTE (review M6): week_start is a local-tz wall-clock `timestamp` (no zone) — the
+--   bucket label, not an instant. NOTE (review M3): the friction query INNER JOINs
+--   tasks, so frictions with NULL task_id are excluded from the category view
+--   (Stage-1 known limit; they remain visible in Today's open count).
 
 -- name: SumWorkByCategoryModeWeek :many
 -- mode distribution shift: total WORK seconds per (week, mode) for a category.
