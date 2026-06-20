@@ -1,11 +1,11 @@
 # Stage 2 — UI/UX 簡素化 方針ブリーフ
 
-**Status**: ドラフト (方針と WHY のみ。詳細設計は別セッションで詰める)
+**Status**: 実装済み (`feat/ui-simplify`)。§5 の Open Questions は本セッションで解決済み (下記)。
 **Branch**: `feat/ui-simplify`
 **関連**: [ADR 005](./ADR/005-craft-time-model.md) §10 / [DESIGN_CONCEPT.md](./DESIGN_CONCEPT.md) / [PRODUCT_BRIEF.md](./PRODUCT_BRIEF.md)
 
 > このドキュメントは「なぜ Stage 2 をやるのか」と「どの方向に簡素化するか」を固定するためのもの。
-> 具体のコンポーネント設計・トークン調整は別セッションで Open Questions を詰めてから実装する。
+> §5 で当初の Open Questions と、その解決 (本セッションの実装方針) を記録する。
 
 ---
 
@@ -47,15 +47,15 @@ grill で決めた原則 **「検証してから設計」**。Stage 1 で情報�
   本人が気に入っている。**色は変えない。**
 - プロダクト原則 (過去の自分とだけ比較 / Streak・ランキング無し / N不足は非表示 / 時間管理ではない)。
 
-### 2.2 削る・和らげるもの (候補・詳細は次セッション)
-- 過剰装飾: radial gradient 背景、glow、影。
-- 3書体 (Inter / JetBrains Mono / Source Serif 4) → Serif は Insight 廃止で出番減。**2書体程度**に整理を検討。
-- 計器メタファの作り込み (uppercase + `tracking-instrument` の多用、KeyCap の物理キー表現の重さ 等) を
-  日常操作向けに軽量化。
+### 2.2 削る・和らげるもの
+- 過剰装飾: radial gradient 背景、glow、影 (inset 1px ハイライトのみ残す)。
+- 3書体 (Inter / JetBrains Mono / Source Serif 4) → **2書体** (Serif 撤去)。mono はデータ専用。
+- 計器メタファの作り込み (uppercase + tracking の多用) → Inter sentence case に統一。KeyCap は残すが軽量化。
 
 ### 2.3 主役に据えるもの
-- **状態機械の現在状態**: 常に1つだけ・大きく・誤解なく (WORK の `mode×driver` / 計測対象外 / 作業していない)。
-- **復帰時確認** (ActiveSliceCard の 8h 閾値「閉じ忘れ?」) の磨き込み。
+- **状態機械の現在状態**: 常に1つだけ・大きく・誤解なく (`StatusHero`: WORK の `mode×driver` / 計測対象外 /
+  作業していない / 確認が必要 を等価重みで)。
+- **復帰時確認** (8h 閾値「閉じ忘れ?」) を `StatusHero` の "確認が必要" 状態として磨き込み。
 - **1キー記録の導線**を最短・最軽に。
 
 ---
@@ -72,16 +72,28 @@ grill で決めた原則 **「検証してから設計」**。Stage 1 で情報�
 
 ---
 
-## 5. 次セッションで詰める Open Questions
-- 書体は2つに絞るか。どれを残し、Serif をどうするか。
-- 計器メタファをどこまで残すか (世界観 vs 操作性のバランス点)。
-- 背景: gradient 完全廃止か、ごく薄く残すか。
-- 狭幅 / モバイルレイアウトの扱い。
-- 既存コンポーネント (Card / Button / Badge / KeyCap / Divider / ModeBar / StatTile / ThenVsNowChart /
-  CategoryTabs / ActiveSliceBanner) のどれを簡素化 / 統合するか。
-- レビュー follow-up (report index NEW-1/2 / API_DESIGN 例示の scrub / 軽微4点 / tooltip 目視) は
-  別PR (`fix/review-followups`) だが、Stage 2 と同時に着手するか別にするか。
+## 5. Open Questions (本セッションで解決)
+- **書体**: 2書体に確定。Source Serif 4 撤去、Inter + JetBrains Mono。mono はデータ専用、ラベルは Inter。
+- **計器メタファ**: uppercase + tracking のラベル装飾をやめ Inter sentence case に。KeyCap は残すが軽量化
+  (1キー・3秒の導線として温存、影/濃い面を除去)。
+- **背景**: radial gradient は廃止 (単色 canvas)。glow も除去。inset 1px ハイライトのみ残す。
+- **狭幅/モバイル**: 専用レイアウトは作らない。WCAG 1.4.10 Reflow を満たす範囲で stat タイル縦積み・
+  ヘッダー折返しのみ。
+- **既存コンポーネント**: 統合はせず視覚層のみ簡素化。例外として `ActiveSliceBanner` → `StatusHero`
+  (全状態を等価重みで提示) に置換。`Button` は未使用のためコントラスト修正のみ。
+- **レビュー follow-up**: 別PR (`fix/review-followups`)。本PRは frontend 視覚層のみに限定。tooltip は
+  本PRの検証対象に含め、コントラスト改善 (tooltip itemStyle = parchment) も実施。
+- **追加方針 (本セッションで合意)**: WCAG 2.2 AA + WAI-ARIA APG を着手コンポーネントに適用
+  (focus-visible・`aria-live` ステータス・ネイティブ `<dialog>`・`ErrorText` `role=alert`・コントラスト再検証・
+  skip link・1.4.10 Reflow)。
 
-## 6. 進め方
-別セッションで §5 を詰めてから実装。検証は `tsc -b` + `vite build` + アプリ起動の実画面目視。完了後 PR。
-（環境注意: node 不調時は `brew reinstall node`。go/pnpm は login shell 経由で PATH。）
+## 6. 進め方 / 検証結果
+実装済み。検証:
+- `tsc -b` ✓ / `vite build` ✓
+- 除去項目の compiled CSS 確認 (Source Serif・radial-gradient・glow = 0、`:focus-visible` outline = 有) ✓
+- コントラスト計算 (AA) ✓
+- 実ブラウザの目視・axe・キーボード操作は本環境では Playwright ブリッジ不在のため**未実施** — 手元ブラウザでの確認が必要。
+
+（環境注意: node 不調時は `brew reinstall node`。go/pnpm は login shell 経由で PATH。
+`pnpm build` は esbuild の build script 未承認で失敗するため
+`./node_modules/.bin/tsc -b && ./node_modules/.bin/vite build` で実行する。）
