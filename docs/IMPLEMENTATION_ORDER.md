@@ -1,5 +1,9 @@
 # Orbit 実装順序
 
+> **整合注記**: [ADR 005](./ADR/005-craft-time-model.md) により、次の実装は Stage 1 `feat/craft-time-model`
+> (migration張り直し + 状態機械 backend + category×時間窓グロス集計 + 最小本物UIで配線 → 1〜2週ドッグフード) →
+> Stage 2 `feat/ui-simplify`。詳細プランは ADR 005 承認後に planner/tdd-guide で別途。
+
 > Phase 1 = 成長実感 MVP。
 > 詳細スコープと Done 条件は [ROADMAP.md](./ROADMAP.md) / [ADR/004-pivot-to-growth-sensation.md](./ADR/004-pivot-to-growth-sensation.md) を参照。
 

@@ -1,5 +1,10 @@
 # Orbit — Design Concept "Observatory"
 
+> **整合注記**: [ADR 005](./ADR/005-craft-time-model.md) で UI 簡素化 (Observatory 装飾の削減・テーマ素朴化) を
+> Stage 2 (`feat/ui-simplify`) として実施予定。`InsightItem` は Insight 削除に伴い廃止、`ModeBar` は
+> mode×driver 表示に拡張、状態機械 (単一現在活動) の UX を主役に据える。本書の世界観は維持しつつ、
+> 凝った装飾は検証済みの情報構造に対して最小限にする。
+
 ## Vision
 
 Orbit は **観測装置 (observatory)**。
