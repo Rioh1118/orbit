@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/Rioh1118/orbit/backend/internal/domain/workslice"
@@ -62,25 +63,6 @@ func (s *WorkSliceService) Get(ctx context.Context, id, userID uuid.UUID) (*work
 	return s.repo.Get(ctx, id, userID)
 }
 
-// closeOpen ends the user's currently-open segment (if any) at `at`.
-// This enforces the single-current-activity invariant before opening a new segment.
-func (s *WorkSliceService) closeOpen(ctx context.Context, userID uuid.UUID, at time.Time) error {
-	open, err := s.repo.GetOpen(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if open == nil {
-		return nil
-	}
-	if err := open.End(at); err != nil {
-		return err
-	}
-	if _, err := s.repo.Update(ctx, open); err != nil {
-		return err
-	}
-	return nil
-}
-
 type WSStartInput struct {
 	UserID uuid.UUID
 	TaskID *uuid.UUID
@@ -89,7 +71,7 @@ type WSStartInput struct {
 	Note   string
 }
 
-// Start opens a WORK segment, auto-closing any segment already open (state machine).
+// Start opens a WORK segment, atomically closing any segment already open (state machine, ADR 005 / C1).
 func (s *WorkSliceService) Start(ctx context.Context, in WSStartInput) (*workslice.WorkSlice, error) {
 	if in.Driver == "" {
 		in.Driver = workslice.DriverSolo
@@ -112,18 +94,17 @@ func (s *WorkSliceService) Start(ctx context.Context, in WSStartInput) (*worksli
 	if err := w.Validate(); err != nil {
 		return nil, err
 	}
-	if err := s.closeOpen(ctx, in.UserID, now); err != nil {
-		return nil, err
-	}
-	created, err := s.repo.Create(ctx, w)
+	created, err := s.repo.StartExclusive(ctx, w)
 	if err != nil {
 		return nil, err
 	}
-	// Auto-set tasks.started_at on first slice. Best-effort, ignore errors.
+	// Auto-set tasks.started_at on first slice. Best-effort but logged (not swallowed).
 	if in.TaskID != nil {
 		if t, err := s.taskRepo.Get(ctx, *in.TaskID, in.UserID); err == nil && t.StartedAt == nil {
 			t.StartedAt = &now
-			_, _ = s.taskRepo.Update(ctx, t)
+			if _, err := s.taskRepo.Update(ctx, t); err != nil {
+				slog.WarnContext(ctx, "failed to set task started_at", "task_id", *in.TaskID, "error", err)
+			}
 		}
 	}
 	return created, nil
@@ -135,7 +116,7 @@ type WSStartOffInput struct {
 	Note   string
 }
 
-// StartOff opens a non-craft (off) segment (break/meeting/other), auto-closing the open segment.
+// StartOff opens a non-craft (off) segment, atomically closing the open segment.
 func (s *WorkSliceService) StartOff(ctx context.Context, in WSStartOffInput) (*workslice.WorkSlice, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -153,10 +134,7 @@ func (s *WorkSliceService) StartOff(ctx context.Context, in WSStartOffInput) (*w
 	if err := w.Validate(); err != nil {
 		return nil, err
 	}
-	if err := s.closeOpen(ctx, in.UserID, now); err != nil {
-		return nil, err
-	}
-	return s.repo.Create(ctx, w)
+	return s.repo.StartExclusive(ctx, w)
 }
 
 // Stop closes the user's open segment without opening a new one ("作業終了").

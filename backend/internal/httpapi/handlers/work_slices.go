@@ -215,11 +215,15 @@ func (h *WorkSliceHandler) start(w http.ResponseWriter, r *http.Request) {
 		UserID: uid, TaskID: taskID, Mode: mode, Driver: driver, Note: req.Note,
 	})
 	if err != nil {
+		if errors.Is(err, repo.ErrOpenSegmentConflict) {
+			response.Error(w, http.StatusConflict, "CONFLICT", "another segment is already open", nil)
+			return
+		}
 		if isWSValidationErr(err) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "could not start segment", nil)
 		return
 	}
 	response.Success(w, http.StatusCreated, wsToDTO(slice))
@@ -244,11 +248,15 @@ func (h *WorkSliceHandler) startOff(w http.ResponseWriter, r *http.Request) {
 	}
 	slice, err := h.svc.StartOff(r.Context(), service.WSStartOffInput{UserID: uid, Reason: reason, Note: req.Note})
 	if err != nil {
+		if errors.Is(err, repo.ErrOpenSegmentConflict) {
+			response.Error(w, http.StatusConflict, "CONFLICT", "another segment is already open", nil)
+			return
+		}
 		if isWSValidationErr(err) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_FAILED", err.Error(), nil)
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), nil)
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "could not start segment", nil)
 		return
 	}
 	response.Success(w, http.StatusCreated, wsToDTO(slice))

@@ -5,7 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Rioh1118/orbit/backend/internal/domain/friction"
 	"github.com/Rioh1118/orbit/backend/internal/domain/task"
+	"github.com/Rioh1118/orbit/backend/internal/domain/workslice"
 	"github.com/Rioh1118/orbit/backend/internal/repo"
 	"github.com/google/uuid"
 )
@@ -33,16 +35,36 @@ type ThenVsNowInput struct {
 	TZ       string
 }
 
+// Service-layer row shapes. Defined here (not reused from repo) so the DB shape
+// does not leak upward to handlers (review H4).
+type ModeWeek struct {
+	WeekStart    time.Time
+	Mode         workslice.Mode
+	TotalSeconds int64
+}
+
+type CompletedWeek struct {
+	WeekStart    time.Time
+	TaskCount    int64
+	TotalSeconds int64
+}
+
+type FrictionWeek struct {
+	WeekStart  time.Time
+	PatternTag friction.PatternTag
+	Count      int64
+}
+
 // ThenVsNowResult is the gross {category × week} view (ADR 005). All slices are
-// week-bucketed in TZ; the frontend derives stat tiles (% change) from them.
+// week-bucketed in TZ; the frontend derives proportions and trends from them.
 type ThenVsNowResult struct {
 	Category        task.Category
 	TZ              string
 	From            time.Time
 	To              time.Time
-	ModeByWeek      []repo.ModeWeekBucket
-	CompletedByWeek []repo.CompletedTaskWeekBucket
-	FrictionByWeek  []repo.FrictionPatternWeekBucket
+	ModeByWeek      []ModeWeek
+	CompletedByWeek []CompletedWeek
+	FrictionByWeek  []FrictionWeek
 }
 
 func (s *ReportService) ThenVsNow(ctx context.Context, in ThenVsNowInput) (*ThenVsNowResult, error) {
@@ -68,26 +90,36 @@ func (s *ReportService) ThenVsNow(ctx context.Context, in ThenVsNowInput) (*Then
 	from := now.AddDate(0, 0, -7*weeks)
 	rng := repo.ReportRange{UserID: in.UserID, Category: in.Category, From: from, To: now, TZ: tz}
 
-	modeByWeek, err := s.reports.ModeByWeek(ctx, rng)
+	modeRows, err := s.reports.ModeByWeek(ctx, rng)
 	if err != nil {
 		return nil, err
 	}
-	completed, err := s.reports.CompletedTaskTimeByWeek(ctx, rng)
+	completedRows, err := s.reports.CompletedTaskTimeByWeek(ctx, rng)
 	if err != nil {
 		return nil, err
 	}
-	frictions, err := s.reports.FrictionsByWeek(ctx, rng)
+	frictionRows, err := s.reports.FrictionsByWeek(ctx, rng)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ThenVsNowResult{
+	res := &ThenVsNowResult{
 		Category:        in.Category,
 		TZ:              tz,
 		From:            from,
 		To:              now,
-		ModeByWeek:      modeByWeek,
-		CompletedByWeek: completed,
-		FrictionByWeek:  frictions,
-	}, nil
+		ModeByWeek:      make([]ModeWeek, 0, len(modeRows)),
+		CompletedByWeek: make([]CompletedWeek, 0, len(completedRows)),
+		FrictionByWeek:  make([]FrictionWeek, 0, len(frictionRows)),
+	}
+	for _, b := range modeRows {
+		res.ModeByWeek = append(res.ModeByWeek, ModeWeek{WeekStart: b.WeekStart, Mode: b.Mode, TotalSeconds: b.TotalSeconds})
+	}
+	for _, b := range completedRows {
+		res.CompletedByWeek = append(res.CompletedByWeek, CompletedWeek{WeekStart: b.WeekStart, TaskCount: b.TaskCount, TotalSeconds: b.TotalSeconds})
+	}
+	for _, b := range frictionRows {
+		res.FrictionByWeek = append(res.FrictionByWeek, FrictionWeek{WeekStart: b.WeekStart, PatternTag: b.PatternTag, Count: b.Count})
+	}
+	return res, nil
 }

@@ -10,17 +10,24 @@ import (
 	"github.com/Rioh1118/orbit/backend/internal/repo/sqlcgen"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrWorkSliceNotFound = errors.New("work slice not found")
+var (
+	ErrWorkSliceNotFound = errors.New("work slice not found")
+	// ErrOpenSegmentConflict is returned when two segments would be open at once
+	// (the partial unique index work_slices_user_open_uniq fired).
+	ErrOpenSegmentConflict = errors.New("another segment is already open")
+)
 
 type WorkSliceRepo struct {
-	q *sqlcgen.Queries
+	pool *pgxpool.Pool
+	q    *sqlcgen.Queries
 }
 
 func NewWorkSliceRepo(pool *pgxpool.Pool) *WorkSliceRepo {
-	return &WorkSliceRepo{q: sqlcgen.New(pool)}
+	return &WorkSliceRepo{pool: pool, q: sqlcgen.New(pool)}
 }
 
 type ListWorkSlicesParams struct {
@@ -98,37 +105,47 @@ func (r *WorkSliceRepo) Get(ctx context.Context, id, userID uuid.UUID) (*worksli
 	return rowToWorkSlice(row), nil
 }
 
-func (r *WorkSliceRepo) Create(ctx context.Context, w *workslice.WorkSlice) (*workslice.WorkSlice, error) {
-	row, err := r.q.CreateWorkSlice(ctx, sqlcgen.CreateWorkSliceParams{
-		ID:        toPgUUID(w.ID),
-		UserID:    toPgUUID(w.UserID),
-		TaskID:    toPgUUIDPtr(w.TaskID),
-		Type:      string(w.Type),
-		Mode:      strToPtr(string(w.Mode)),
-		Driver:    strToPtr(string(w.Driver)),
-		OffReason: strToPtr(string(w.OffReason)),
-		StartedAt: toPgTime(w.StartedAt),
-		Note:      strToPtr(w.Note),
-	})
+// StartExclusive atomically closes any open segment (at w.StartedAt) and creates w,
+// enforcing the single-current-activity invariant in one transaction (ADR 005 / review C1).
+func (r *WorkSliceRepo) StartExclusive(ctx context.Context, w *workslice.WorkSlice) (*workslice.WorkSlice, error) {
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := r.q.WithTx(tx)
+
+	openRow, err := qtx.GetOpenWorkSlice(ctx, toPgUUID(w.UserID))
+	switch {
+	case err == nil:
+		open := rowToWorkSlice(openRow) // fresh copy; safe to mutate
+		if err := open.End(w.StartedAt); err != nil {
+			return nil, err
+		}
+		if _, err := qtx.UpdateWorkSlice(ctx, updateParams(open)); err != nil {
+			return nil, fmt.Errorf("close open slice: %w", err)
+		}
+	case errors.Is(err, pgx.ErrNoRows):
+		// nothing open
+	default:
+		return nil, fmt.Errorf("get open slice: %w", err)
+	}
+
+	row, err := qtx.CreateWorkSlice(ctx, createParams(w))
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrOpenSegmentConflict
+		}
 		return nil, fmt.Errorf("create work slice: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit start: %w", err)
 	}
 	return rowToWorkSlice(row), nil
 }
 
 func (r *WorkSliceRepo) Update(ctx context.Context, w *workslice.WorkSlice) (*workslice.WorkSlice, error) {
-	row, err := r.q.UpdateWorkSlice(ctx, sqlcgen.UpdateWorkSliceParams{
-		ID:          toPgUUID(w.ID),
-		UserID:      toPgUUID(w.UserID),
-		TaskID:      toPgUUIDPtr(w.TaskID),
-		Mode:        strToPtr(string(w.Mode)),
-		Driver:      strToPtr(string(w.Driver)),
-		OffReason:   strToPtr(string(w.OffReason)),
-		StartedAt:   toPgTime(w.StartedAt),
-		EndedAt:     toPgTimePtr(w.EndedAt),
-		DurationSec: intPtrToInt32Ptr(w.DurationSec),
-		Note:        strToPtr(w.Note),
-	})
+	row, err := r.q.UpdateWorkSlice(ctx, updateParams(w))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrWorkSliceNotFound
@@ -166,6 +183,40 @@ func (r *WorkSliceRepo) SumByMode(ctx context.Context, userID uuid.UUID, from, t
 		out[workslice.Mode(*row.Mode)] = row.TotalSeconds
 	}
 	return out, nil
+}
+
+func createParams(w *workslice.WorkSlice) sqlcgen.CreateWorkSliceParams {
+	return sqlcgen.CreateWorkSliceParams{
+		ID:        toPgUUID(w.ID),
+		UserID:    toPgUUID(w.UserID),
+		TaskID:    toPgUUIDPtr(w.TaskID),
+		Type:      string(w.Type),
+		Mode:      strToPtr(string(w.Mode)),
+		Driver:    strToPtr(string(w.Driver)),
+		OffReason: strToPtr(string(w.OffReason)),
+		StartedAt: toPgTime(w.StartedAt),
+		Note:      strToPtr(w.Note),
+	}
+}
+
+func updateParams(w *workslice.WorkSlice) sqlcgen.UpdateWorkSliceParams {
+	return sqlcgen.UpdateWorkSliceParams{
+		ID:          toPgUUID(w.ID),
+		UserID:      toPgUUID(w.UserID),
+		TaskID:      toPgUUIDPtr(w.TaskID),
+		Mode:        strToPtr(string(w.Mode)),
+		Driver:      strToPtr(string(w.Driver)),
+		OffReason:   strToPtr(string(w.OffReason)),
+		StartedAt:   toPgTime(w.StartedAt),
+		EndedAt:     toPgTimePtr(w.EndedAt),
+		DurationSec: intPtrToInt32Ptr(w.DurationSec),
+		Note:        strToPtr(w.Note),
+	}
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
 func rowToWorkSlice(r sqlcgen.WorkSlice) *workslice.WorkSlice {
