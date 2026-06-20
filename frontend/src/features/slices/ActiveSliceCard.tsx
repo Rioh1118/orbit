@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { StatusHero, type HeroState } from "@/components/orbit/StatusHero";
 import { ErrorText } from "@/components/ui/ErrorText";
+import { useNow } from "@/lib/useNow";
 import { useTasks } from "@/features/tasks/hooks";
 import { useCurrentSlice, useEndSlice, useStartOff } from "./hooks";
 import { OFF_REASONS, SLICE_MODE_META } from "./types";
@@ -24,12 +24,7 @@ export function ActiveSliceCard() {
   const { data: tasksResp } = useTasks();
   const end = useEndSlice();
   const startOff = useStartOff();
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
+  const now = useNow();
 
   if (isLoading) return <p className="text-sm text-mist">読み込み中…</p>;
 

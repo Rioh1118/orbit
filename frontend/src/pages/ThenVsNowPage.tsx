@@ -96,15 +96,14 @@ export default function ThenVsNowPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <header>
-        <p className="text-xs font-medium text-mist">then · vs · now</p>
-        <h1 className="mt-2 text-2xl font-semibold text-parchment">
+        <h1 className="text-2xl font-semibold text-parchment">
           同じ作業、前より速く解けるようになった?
         </h1>
       </header>
 
       <CategoryTabs value={category} onChange={setCategory} />
 
-      {isLoading && <p className="text-sm text-mist">loading…</p>}
+      {isLoading && <p className="text-sm text-mist">読み込み中…</p>}
       {error && <ErrorText>{(error as Error).message}</ErrorText>}
 
       {!isLoading && !error && points.length < MIN_WEEKS_FOR_SIGNAL && (
@@ -117,7 +116,7 @@ export default function ThenVsNowPage() {
       {points.length >= MIN_WEEKS_FOR_SIGNAL && (
         <>
           <section>
-            <Divider label="mode allocation / weekly share" />
+            <Divider label="モード配分 / 週次比率" />
             <div className="mt-5">
               <ThenVsNowChart data={points} modes={modes} />
             </div>
@@ -125,19 +124,19 @@ export default function ThenVsNowPage() {
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <StatTile
-              label="code explore share"
+              label="コード探索の比率"
               value={shareDelta("code_explore")}
-              hint="first → now"
+              hint="最初 → 現在"
             />
             <StatTile
-              label="implement share"
+              label="実装の比率"
               value={shareDelta("implement")}
-              hint="first → now"
+              hint="最初 → 現在"
             />
           </section>
 
           <section>
-            <Divider label="completion time / task (min)" />
+            <Divider label="完了時間 / タスク (分)" />
             {completionSeries.length < MIN_WEEKS_FOR_SIGNAL ? (
               <p className="mt-4 text-sm text-mist">
                 データ不足 — 完了タスクが足りません
@@ -152,6 +151,8 @@ export default function ThenVsNowPage() {
                     <YAxis hide domain={["auto", "auto"]} />
                     <Tooltip
                       contentStyle={chartTheme.tooltipStyle}
+                      itemStyle={chartTheme.tooltipItemStyle}
+                      labelStyle={chartTheme.tooltipLabelStyle}
                       formatter={(v: number | string) => `${Number(v)}m`}
                     />
                     <Line
@@ -168,7 +169,7 @@ export default function ThenVsNowPage() {
           </section>
 
           <section>
-            <Divider label="frictions / this window" />
+            <Divider label="詰まり / この期間" />
             <p className="mt-4 text-sm text-parchment">
               {frictionSummary.total} 件
               {frictionSummary.detail && (

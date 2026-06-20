@@ -62,8 +62,8 @@ function viewFor(state: HeroState): StateView {
 
 export function StatusHero({ state, onEnd, onBreak, busy }: StatusHeroProps) {
   const view = viewFor(state);
-  const showElapsed = state.kind === "working" || state.kind === "off";
-  const showActions = state.kind === "working" || state.kind === "off";
+  const isActive = state.kind === "working" || state.kind === "off";
+  const stale = state.kind === "working" && state.stale;
 
   return (
     <section
@@ -73,21 +73,23 @@ export function StatusHero({ state, onEnd, onBreak, busy }: StatusHeroProps) {
       <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${view.bar}`} />
 
       <div className="flex items-start justify-between gap-4">
-        {/* Only the state phrase is announced — the elapsed clock is excluded so it
-            doesn't re-announce on every 30s tick. */}
-        <p
-          role="status"
-          aria-live="polite"
-          className="flex items-center gap-2.5 text-lg text-parchment"
-        >
+        {/* role="status" implies aria-live="polite". Only the state phrase is announced —
+            the elapsed clock is excluded so it doesn't re-announce on every 30s tick. */}
+        <p role="status" className="flex items-center gap-2.5 text-lg text-parchment">
           <span
             aria-hidden
             className={`h-2.5 w-2.5 shrink-0 rounded-full ${view.dot}`}
           />
           {view.phrase}
         </p>
-        {showElapsed && (
-          <span className="shrink-0 font-mono text-2xl tabular-nums text-parchment">
+        {isActive && (
+          <span
+            className={
+              stale
+                ? "shrink-0 font-mono text-lg tabular-nums text-parchment-muted"
+                : "shrink-0 font-mono text-2xl tabular-nums text-parchment"
+            }
+          >
             {state.elapsedLabel}
           </span>
         )}
@@ -105,17 +107,17 @@ export function StatusHero({ state, onEnd, onBreak, busy }: StatusHeroProps) {
         </p>
       )}
 
-      {state.kind === "working" && state.stale && (
-        <p className="text-sm text-friction">
-          長時間開いたままです。閉じ忘れかもしれません。
+      {stale && (
+        <p className="border-l-2 border-friction pl-2.5 text-sm text-parchment">
+          長時間開いたままです。終了すると開始からの全経過時間が記録されます — 閉じ忘れの場合はご注意ください。
         </p>
       )}
 
       {state.kind === "idle" && (
-        <p className="text-sm text-mist">下のモードを選ぶと計測を開始します。</p>
+        <p className="text-sm text-mist">下のモードを選んで計測を開始します。</p>
       )}
 
-      {showActions && (
+      {isActive && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -123,7 +125,7 @@ export function StatusHero({ state, onEnd, onBreak, busy }: StatusHeroProps) {
             disabled={busy}
             className="rounded-md border border-instrument/50 bg-canvas px-3 py-1.5 text-sm text-parchment transition-colors hover:border-instrument disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {state.kind === "working" && state.stale ? "閉じる" : "終了"}
+            {stale ? "閉じる" : "終了"}
           </button>
           {state.kind === "working" && (
             <button

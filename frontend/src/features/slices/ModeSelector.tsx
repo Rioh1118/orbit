@@ -45,7 +45,7 @@ export function ModeSelector({ disabled }: Props) {
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <label htmlFor="slice-task" className="text-xs font-medium text-mist">
-            task
+            タスク
           </label>
           <select
             id="slice-task"
@@ -53,7 +53,7 @@ export function ModeSelector({ disabled }: Props) {
             onChange={(e) => setTaskId(e.target.value)}
             className="rounded border border-instrument/40 bg-surface px-2 py-1 text-sm text-parchment"
           >
-            <option value="">— none —</option>
+            <option value="">— なし —</option>
             {tasksResp?.data.map((t) => (
               <option key={t.id} value={t.id}>
                 [{t.category}] {t.title}
@@ -62,22 +62,32 @@ export function ModeSelector({ disabled }: Props) {
           </select>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-xs font-medium text-mist">driver</span>
-          {SLICE_DRIVERS.map((d) => (
-            <button
-              key={d.value}
-              type="button"
-              onClick={() => setDriver(d.value)}
-              aria-pressed={driver === d.value}
-              className={`rounded border px-2 py-1 text-xs ${
-                driver === d.value
-                  ? "border-instrument bg-elevated text-parchment"
-                  : "border-instrument/30 bg-surface text-mist hover:text-parchment"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
+          <span id="driver-label" className="text-xs font-medium text-mist">
+            ドライバー
+          </span>
+          {/* single-select → radiogroup/radio + aria-checked (review H2 / SC 4.1.2) */}
+          <div
+            role="radiogroup"
+            aria-labelledby="driver-label"
+            className="flex items-center gap-1"
+          >
+            {SLICE_DRIVERS.map((d) => (
+              <button
+                key={d.value}
+                type="button"
+                role="radio"
+                aria-checked={driver === d.value}
+                onClick={() => setDriver(d.value)}
+                className={`rounded border px-2 py-1 text-xs ${
+                  driver === d.value
+                    ? "border-instrument bg-elevated text-parchment"
+                    : "border-instrument/30 bg-surface text-mist hover:text-parchment"
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -88,7 +98,7 @@ export function ModeSelector({ disabled }: Props) {
               onClick={() => startMode(m.value)}
               disabled={disabled || start.isPending}
               className="flex w-full items-center gap-2 rounded border border-instrument/40 bg-surface px-3 py-2 text-left text-sm text-parchment hover:border-instrument disabled:opacity-50"
-              aria-label={`start ${m.label}`}
+              aria-label={`${m.label} を開始`}
             >
               <KeyCap k={m.key} size="sm" />
               <span className="text-xs text-mist">{m.label}</span>
