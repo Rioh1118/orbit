@@ -1,34 +1,71 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CategoryTabs, type Category } from "@/components/orbit/CategoryTabs";
-import { ThenVsNowChart, type WeekPoint } from "@/components/orbit/ThenVsNowChart";
+import {
+  ThenVsNowChart,
+  type WeekPoint,
+} from "@/components/orbit/ThenVsNowChart";
 import { Divider } from "@/components/ui/Divider";
 import { StatTile } from "@/components/orbit/StatTile";
-import { InsightItem } from "@/components/orbit/InsightItem";
+import { useThenVsNow } from "@/features/reports/hooks";
 
-const WEEKS: WeekPoint[] = [
-  { week: "W-3", code_explore: 320, implement: 90, debug: 60, spec_read: 40 },
-  { week: "W-2", code_explore: 260, implement: 120, debug: 50, spec_read: 30 },
-  { week: "W-1", code_explore: 190, implement: 150, debug: 40, spec_read: 25 },
-  { week: "now", code_explore: 140, implement: 170, debug: 30, spec_read: 20 },
-];
+const MIN_WEEKS_FOR_SIGNAL = 2;
 
-const MODES = ["spec_read", "debug", "implement", "code_explore"];
+function shortWeek(week: string): string {
+  // "2026-06-15" -> "06-15"
+  return week.length >= 10 ? week.slice(5) : week;
+}
 
-const INSIGHTS = [
-  {
-    before: "ActiveRecord の where(...).first は遅いと思っていた",
-    after: "find_by が同じだと知った。N+1だけ気にすれば良い",
-    date: "W-1",
-  },
-  {
-    before: "Hotwire の turbo-frame は何にでも使えると思っていた",
-    after: "frame は1ページ内で1要素しか上書きしない",
-    date: "W-2",
-  },
-];
+function formatHM(seconds: number): string {
+  const m = Math.round(seconds / 60);
+  const h = Math.floor(m / 60);
+  return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+}
+
+function pctChange(first: number, last: number): string {
+  if (first === 0) return "—";
+  return `${Math.round(((last - first) / first) * 100)}%`;
+}
 
 export default function ThenVsNowPage() {
-  const [category, setCategory] = useState<Category>("learning");
+  const [category, setCategory] = useState<Category>("new_feature");
+  const { data, isLoading, error } = useThenVsNow(category);
+
+  const { points, modes } = useMemo(() => {
+    if (!data) return { points: [] as WeekPoint[], modes: [] as string[] };
+    const byWeek = new Map<string, WeekPoint>();
+    const modeSet = new Set<string>();
+    for (const r of data.mode_by_week) {
+      modeSet.add(r.mode);
+      const w =
+        byWeek.get(r.week) ?? ({ week: shortWeek(r.week) } as WeekPoint);
+      w[r.mode] = Math.round(r.seconds / 60);
+      byWeek.set(r.week, w);
+    }
+    return { points: Array.from(byWeek.values()), modes: Array.from(modeSet) };
+  }, [data]);
+
+  const frictionSummary = useMemo(() => {
+    const byTag = new Map<string, number>();
+    let total = 0;
+    for (const b of data?.friction_by_week ?? []) {
+      byTag.set(b.pattern_tag, (byTag.get(b.pattern_tag) ?? 0) + b.count);
+      total += b.count;
+    }
+    const detail = Array.from(byTag.entries())
+      .map(([tag, n]) => `${tag} ${n}`)
+      .join(" · ");
+    return { total, detail };
+  }, [data]);
+
+  // first→now change for a signal mode (minutes).
+  const changeFor = (mode: string): string => {
+    if (points.length < MIN_WEEKS_FOR_SIGNAL) return "—";
+    const first = Number(points[0][mode] ?? 0);
+    const last = Number(points[points.length - 1][mode] ?? 0);
+    return pctChange(first, last);
+  };
+
+  const latestCompleted = data?.completed_by_week.at(-1);
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
@@ -43,27 +80,62 @@ export default function ThenVsNowPage() {
 
       <CategoryTabs value={category} onChange={setCategory} />
 
-      <section>
-        <Divider label="mode allocation / last 4 weeks" />
-        <div className="mt-5">
-          <ThenVsNowChart data={WEEKS} modes={MODES} />
-        </div>
-      </section>
+      {isLoading && <p className="text-sm text-mist">loading…</p>}
+      {error && (
+        <p className="text-sm text-danger">error: {(error as Error).message}</p>
+      )}
 
-      <section className="grid grid-cols-3 gap-3">
-        <StatTile label="explore" value="−56%" hint="W-3 → now" />
-        <StatTile label="implement" value="+89%" hint="W-3 → now" />
-        <StatTile label="friction · cant_find" value="−40%" hint="resolve time" />
-      </section>
+      {!isLoading && !error && points.length < MIN_WEEKS_FOR_SIGNAL && (
+        <p className="font-mono text-xs uppercase tracking-instrument text-mist">
+          データ不足 — あと {MIN_WEEKS_FOR_SIGNAL - points.length}{" "}
+          週分で推移を表示します
+        </p>
+      )}
 
-      <section>
-        <Divider label="insights / this week" />
-        <div className="mt-5 space-y-6">
-          {INSIGHTS.map((i, idx) => (
-            <InsightItem key={idx} {...i} />
-          ))}
-        </div>
-      </section>
+      {points.length >= MIN_WEEKS_FOR_SIGNAL && (
+        <>
+          <section>
+            <Divider label="mode allocation / weekly (minutes)" />
+            <div className="mt-5">
+              <ThenVsNowChart data={points} modes={modes} />
+            </div>
+          </section>
+
+          <section className="grid grid-cols-3 gap-3">
+            <StatTile
+              label="code explore"
+              value={changeFor("code_explore")}
+              hint="first → now"
+            />
+            <StatTile
+              label="implement"
+              value={changeFor("implement")}
+              hint="first → now"
+            />
+            <StatTile
+              label="completion / task"
+              value={
+                latestCompleted
+                  ? formatHM(latestCompleted.avg_seconds_per_task)
+                  : "—"
+              }
+              hint="latest week avg"
+            />
+          </section>
+
+          <section>
+            <Divider label="frictions / this window" />
+            <p className="mt-4 font-mono text-sm text-parchment">
+              {frictionSummary.total} 件
+              {frictionSummary.detail && (
+                <span className="ml-2 text-xs text-mist">
+                  {frictionSummary.detail}
+                </span>
+              )}
+            </p>
+          </section>
+        </>
+      )}
     </div>
   );
 }

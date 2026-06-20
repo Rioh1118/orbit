@@ -1,7 +1,11 @@
-export type TaskStatus = "open" | "in_progress" | "blocked" | "done" | "archived";
+export type TaskStatus =
+  | "open"
+  | "in_progress"
+  | "blocked"
+  | "done"
+  | "archived";
 
 export type TaskCategory =
-  | "learning"
   | "new_feature"
   | "bug_fix"
   | "refactor"
@@ -9,8 +13,10 @@ export type TaskCategory =
   | "support"
   | "other";
 
-export const TASK_CATEGORIES: ReadonlyArray<{ value: TaskCategory; label: string }> = [
-  { value: "learning", label: "学習 (Learning)" },
+export const TASK_CATEGORIES: ReadonlyArray<{
+  value: TaskCategory;
+  label: string;
+}> = [
   { value: "new_feature", label: "新規機能 (New feature)" },
   { value: "bug_fix", label: "バグ修正 (Bug fix)" },
   { value: "refactor", label: "リファクタ (Refactor)" },

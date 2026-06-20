@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import { KeyCap } from "@/components/ui/KeyCap";
 import { useTasks } from "@/features/tasks/hooks";
 import { useStartSlice } from "./hooks";
-import { SLICE_MODES, SLICE_MODE_BY_KEY, type SliceMode } from "./types";
+import {
+  SLICE_DRIVERS,
+  SLICE_MODES,
+  SLICE_MODE_BY_KEY,
+  type SliceDriver,
+  type SliceMode,
+} from "./types";
 
 interface Props {
   disabled?: boolean;
@@ -12,43 +18,71 @@ export function ModeSelector({ disabled }: Props) {
   const start = useStartSlice();
   const { data: tasksResp } = useTasks();
   const [taskId, setTaskId] = useState<string>("");
+  const [driver, setDriver] = useState<SliceDriver>("solo");
 
   useEffect(() => {
     if (disabled) return;
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
-      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+        return;
       const mode = SLICE_MODE_BY_KEY[e.key.toLowerCase()];
       if (!mode) return;
       e.preventDefault();
-      void start.mutateAsync({ mode, task_id: taskId || null });
+      void start.mutateAsync({ mode, driver, task_id: taskId || null });
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [disabled, start, taskId]);
+  }, [disabled, start, taskId, driver]);
 
-  const startMode = (mode: SliceMode) => start.mutate({ mode, task_id: taskId || null });
+  const startMode = (mode: SliceMode) =>
+    start.mutate({ mode, driver, task_id: taskId || null });
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <label htmlFor="slice-task" className="font-mono text-xs uppercase tracking-instrument text-mist">
-          task
-        </label>
-        <select
-          id="slice-task"
-          value={taskId}
-          onChange={(e) => setTaskId(e.target.value)}
-          className="rounded border border-instrument/40 bg-surface px-2 py-1 text-sm text-parchment"
-        >
-          <option value="">— none —</option>
-          {tasksResp?.data.map((t) => (
-            <option key={t.id} value={t.id}>
-              [{t.category}] {t.title}
-            </option>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="slice-task"
+            className="font-mono text-xs uppercase tracking-instrument text-mist"
+          >
+            task
+          </label>
+          <select
+            id="slice-task"
+            value={taskId}
+            onChange={(e) => setTaskId(e.target.value)}
+            className="rounded border border-instrument/40 bg-surface px-2 py-1 text-sm text-parchment"
+          >
+            <option value="">— none —</option>
+            {tasksResp?.data.map((t) => (
+              <option key={t.id} value={t.id}>
+                [{t.category}] {t.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="font-mono text-xs uppercase tracking-instrument text-mist">
+            driver
+          </span>
+          {SLICE_DRIVERS.map((d) => (
+            <button
+              key={d.value}
+              type="button"
+              onClick={() => setDriver(d.value)}
+              aria-pressed={driver === d.value}
+              className={`rounded border px-2 py-1 font-mono text-xs uppercase tracking-instrument ${
+                driver === d.value
+                  ? "border-instrument bg-elevated text-parchment"
+                  : "border-instrument/30 bg-surface text-mist hover:text-parchment"
+              }`}
+            >
+              {d.label}
+            </button>
           ))}
-        </select>
+        </div>
       </div>
       <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {SLICE_MODES.map((m) => (

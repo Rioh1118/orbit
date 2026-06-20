@@ -18,8 +18,8 @@ export const modeColors: Record<string, string> = {
   implement: "#8fa8b8",
   verify: "#a9c0cc",
   debug: "#d4a574",
-  ai_review: "#7fb28e",
-  human_review: "#5f8e72",
+  study: "#b8a888",
+  review: "#7fb28e",
   consult: "#c9c0ad",
   other: "#6b7a89",
 };

@@ -13,13 +13,10 @@ interface Props {
   onClose: () => void;
 }
 
-const SEVERITIES = [1, 2, 3] as const;
-
 export function FrictionModal({ open, onClose }: Props) {
   const create = useCreateFriction();
   const { data: actives } = useActiveSlices();
   const [tag, setTag] = useState<FrictionPatternTag | null>(null);
-  const [severity, setSeverity] = useState<number>(1);
   const [description, setDescription] = useState("");
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -27,15 +24,13 @@ export function FrictionModal({ open, onClose }: Props) {
   useEffect(() => {
     if (open) {
       setTag(null);
-      setSeverity(1);
       setDescription("");
       // Defer focus to after render.
       queueMicrotask(() => inputRef.current?.focus());
     }
   }, [open]);
 
-  // Tag digit shortcuts work even while typing in the description; we only react
-  // when the user holds Alt to avoid swallowing normal typing.
+  // Tag shortcuts work even while typing; we only react when Alt is held.
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -66,7 +61,6 @@ export function FrictionModal({ open, onClose }: Props) {
     if (!description.trim()) return;
     await create.mutateAsync({
       pattern_tag: tag,
-      severity,
       description: description.trim(),
       work_slice_id: activeSlice?.id ?? null,
       task_id: activeSlice?.task_id ?? null,
@@ -93,7 +87,7 @@ export function FrictionModal({ open, onClose }: Props) {
             record friction
           </h2>
           <span className="font-mono text-[10px] uppercase tracking-instrument text-mist">
-            esc to close · alt+1-9,0 to tag
+            esc to close · alt+1-9,0,a to tag
           </span>
         </header>
 
@@ -137,29 +131,11 @@ export function FrictionModal({ open, onClose }: Props) {
           </ul>
         </fieldset>
 
-        <fieldset className="flex items-center gap-3">
-          <legend className="font-mono text-xs uppercase tracking-instrument text-mist">
-            severity
-          </legend>
-          {SEVERITIES.map((s) => (
-            <label key={s} className="flex items-center gap-1.5 text-sm text-parchment">
-              <input
-                type="radio"
-                name="severity"
-                value={s}
-                checked={severity === s}
-                onChange={() => setSeverity(s)}
-              />
-              {s}
-            </label>
-          ))}
-        </fieldset>
-
         <div className="flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-instrument text-mist">
             {activeSlice
-              ? `linked to active slice (${activeSlice.mode})`
-              : "no active slice — friction will be unlinked"}
+              ? `linked to current segment (${activeSlice.mode || activeSlice.off_reason})`
+              : "no current segment — friction will be unlinked"}
           </p>
           <div className="flex gap-2">
             <button
@@ -180,7 +156,9 @@ export function FrictionModal({ open, onClose }: Props) {
         </div>
 
         {create.error && (
-          <p className="text-xs text-danger">{(create.error as Error).message}</p>
+          <p className="text-xs text-danger">
+            {(create.error as Error).message}
+          </p>
         )}
       </form>
     </div>
