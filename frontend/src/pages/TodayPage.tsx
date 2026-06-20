@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { ModeBar } from "@/components/orbit/ModeBar";
 import { StatTile } from "@/components/orbit/StatTile";
 import { Divider } from "@/components/ui/Divider";
+import { ErrorText } from "@/components/ui/ErrorText";
+import { KeyCap } from "@/components/ui/KeyCap";
+import { useNow } from "@/lib/useNow";
 import { ActiveSliceCard } from "@/features/slices/ActiveSliceCard";
 import { ModeSelector } from "@/features/slices/ModeSelector";
 import { useSlices } from "@/features/slices/hooks";
@@ -15,10 +18,13 @@ import { FrictionLog } from "@/features/frictions/FrictionLog";
 import { useOpenFrictions } from "@/features/frictions/hooks";
 
 function dayWindowISO(date: Date): { from: string; to: string } {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  // Construct fresh dates (no mutation — review L6 / immutability rule). y/m/d+1 keeps the
+  // window correct across DST.
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const d = date.getDate();
+  const start = new Date(y, m, d);
+  const end = new Date(y, m, d + 1);
   return { from: start.toISOString(), to: end.toISOString() };
 }
 
@@ -51,12 +57,7 @@ export default function TodayPage() {
   const { data, isLoading, error } = useSlices({ from, to, limit: 200 });
   const { data: openFrictions } = useOpenFrictions();
   const [frictionOpen, setFrictionOpen] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
+  const now = useNow();
 
   // Global hotkey `f` to record a friction (ignored while typing).
   useEffect(() => {
@@ -107,50 +108,42 @@ export default function TodayPage() {
       <ActiveSliceCard />
 
       <section>
-        <Divider label="start a slice" />
+        <Divider label="計測を開始" />
         <div className="mt-5">
           <ModeSelector />
         </div>
       </section>
 
       <section>
-        <Divider label="today / modes" />
+        <Divider label="本日 / モード" />
         <div className="mt-5">
-          {isLoading && <p className="text-sm text-mist">loading…</p>}
-          {error && (
-            <p className="text-sm text-danger">
-              error: {(error as Error).message}
-            </p>
-          )}
+          {isLoading && <p className="text-sm text-mist">読み込み中…</p>}
+          {error && <ErrorText>{(error as Error).message}</ErrorText>}
           {!isLoading && !error && modeSlices.length === 0 && (
-            <p className="font-mono text-xs uppercase tracking-instrument text-mist">
-              no work segments today yet
-            </p>
+            <p className="text-sm text-mist">本日の作業区間はまだありません</p>
           )}
           {modeSlices.length > 0 && <ModeBar slices={modeSlices} />}
         </div>
       </section>
 
-      <section className="grid grid-cols-3 gap-3">
-        <StatTile label="focus" value={formatHM(totalSec)} hint="today" />
-        <StatTile label="segments" value={workCount} hint="today" />
-        <StatTile label="frictions" value={openCount} hint="open" />
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile label="計測時間" value={formatHM(totalSec)} hint="本日" />
+        <StatTile label="区間" value={workCount} hint="本日" />
+        <StatTile label="詰まり" value={openCount} hint="未解決" />
       </section>
 
       <section>
-        <Divider label="friction log" />
-        <div className="mt-3 flex items-center justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-instrument text-mist">
-            press{" "}
-            <kbd className="rounded border border-instrument/40 px-1">f</kbd> to
-            record
+        <Divider label="詰まりログ" />
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="flex items-center gap-1.5 text-xs text-mist">
+            <KeyCap k="f" size="sm" /> キーで記録
           </p>
           <button
             type="button"
             onClick={() => setFrictionOpen(true)}
-            className="rounded border border-instrument/40 bg-surface px-3 py-1 text-sm text-parchment hover:border-instrument"
+            className="rounded-md border border-instrument/40 bg-surface px-3 py-1 text-sm text-parchment transition-colors hover:border-instrument"
           >
-            + friction
+            + 詰まり
           </button>
         </div>
         <div className="mt-3">

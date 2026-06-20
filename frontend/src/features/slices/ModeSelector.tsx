@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { KeyCap } from "@/components/ui/KeyCap";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { useTasks } from "@/features/tasks/hooks";
 import { useStartSlice } from "./hooks";
 import {
@@ -43,11 +44,8 @@ export function ModeSelector({ disabled }: Props) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <label
-            htmlFor="slice-task"
-            className="font-mono text-xs uppercase tracking-instrument text-mist"
-          >
-            task
+          <label htmlFor="slice-task" className="text-xs font-medium text-mist">
+            タスク
           </label>
           <select
             id="slice-task"
@@ -55,7 +53,7 @@ export function ModeSelector({ disabled }: Props) {
             onChange={(e) => setTaskId(e.target.value)}
             className="rounded border border-instrument/40 bg-surface px-2 py-1 text-sm text-parchment"
           >
-            <option value="">— none —</option>
+            <option value="">— なし —</option>
             {tasksResp?.data.map((t) => (
               <option key={t.id} value={t.id}>
                 [{t.category}] {t.title}
@@ -64,27 +62,35 @@ export function ModeSelector({ disabled }: Props) {
           </select>
         </div>
         <div className="flex items-center gap-1">
-          <span className="font-mono text-xs uppercase tracking-instrument text-mist">
-            driver
+          <span id="driver-label" className="text-xs font-medium text-mist">
+            ドライバー
           </span>
-          {SLICE_DRIVERS.map((d) => (
-            <button
-              key={d.value}
-              type="button"
-              onClick={() => setDriver(d.value)}
-              aria-pressed={driver === d.value}
-              className={`rounded border px-2 py-1 font-mono text-xs uppercase tracking-instrument ${
-                driver === d.value
-                  ? "border-instrument bg-elevated text-parchment"
-                  : "border-instrument/30 bg-surface text-mist hover:text-parchment"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
+          {/* single-select → radiogroup/radio + aria-checked (review H2 / SC 4.1.2) */}
+          <div
+            role="radiogroup"
+            aria-labelledby="driver-label"
+            className="flex items-center gap-1"
+          >
+            {SLICE_DRIVERS.map((d) => (
+              <button
+                key={d.value}
+                type="button"
+                role="radio"
+                aria-checked={driver === d.value}
+                onClick={() => setDriver(d.value)}
+                className={`rounded border px-2 py-1 text-xs ${
+                  driver === d.value
+                    ? "border-instrument bg-elevated text-parchment"
+                    : "border-instrument/30 bg-surface text-mist hover:text-parchment"
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {SLICE_MODES.map((m) => (
           <li key={m.value}>
             <button
@@ -92,19 +98,15 @@ export function ModeSelector({ disabled }: Props) {
               onClick={() => startMode(m.value)}
               disabled={disabled || start.isPending}
               className="flex w-full items-center gap-2 rounded border border-instrument/40 bg-surface px-3 py-2 text-left text-sm text-parchment hover:border-instrument disabled:opacity-50"
-              aria-label={`start ${m.label}`}
+              aria-label={`${m.label} を開始`}
             >
               <KeyCap k={m.key} size="sm" />
-              <span className="font-mono text-xs uppercase tracking-instrument text-mist">
-                {m.label}
-              </span>
+              <span className="text-xs text-mist">{m.label}</span>
             </button>
           </li>
         ))}
       </ul>
-      {start.error && (
-        <p className="text-xs text-danger">{(start.error as Error).message}</p>
-      )}
+      {start.error && <ErrorText>{(start.error as Error).message}</ErrorText>}
     </div>
   );
 }

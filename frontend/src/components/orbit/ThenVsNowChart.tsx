@@ -54,6 +54,8 @@ export function ThenVsNowChart({ data, modes }: ThenVsNowChartProps) {
           />
           <Tooltip
             contentStyle={chartTheme.tooltipStyle}
+            itemStyle={chartTheme.tooltipItemStyle}
+            labelStyle={chartTheme.tooltipLabelStyle}
             cursor={{ fill: "rgba(148,180,193,0.06)" }}
             formatter={(value: number | string) =>
               `${Math.round(Number(value))}m`
@@ -67,7 +69,7 @@ export function ThenVsNowChart({ data, modes }: ThenVsNowChartProps) {
               stackId="1"
               stroke={modeColors[m as SliceMode] ?? "#6b7a89"}
               fill={modeColors[m as SliceMode] ?? "#6b7a89"}
-              fillOpacity={0.85}
+              fillOpacity={0.72}
             />
           ))}
         </AreaChart>

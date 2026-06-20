@@ -4,22 +4,31 @@ import TasksPage from "./pages/TasksPage";
 import ThenVsNowPage from "./pages/ThenVsNowPage";
 
 const navItemClass = ({ isActive }: { isActive: boolean }) =>
-  `font-mono text-xs uppercase tracking-instrument transition-colors ${
+  `text-sm transition-colors ${
     isActive ? "text-parchment" : "text-mist hover:text-parchment"
   }`;
 
 export default function App() {
   return (
     <div className="min-h-screen text-parchment">
-      <header className="flex items-center gap-8 border-b border-instrument/40 px-8 py-4">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:border focus:border-instrument focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:text-parchment"
+      >
+        本文へスキップ
+      </a>
+      <header className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-instrument/40 px-4 py-4 sm:px-8">
         <Link
           to="/"
-          className="font-mono text-sm uppercase tracking-[0.2em] text-parchment"
+          className="font-semibold tracking-wide text-parchment"
           aria-label="Orbit home"
         >
-          <span aria-hidden className="mr-1.5 text-mist">◯</span>orbit
+          <span aria-hidden className="mr-1.5 text-mist">
+            ◯
+          </span>
+          orbit
         </Link>
-        <nav className="flex gap-5">
+        <nav className="flex flex-wrap gap-x-5 gap-y-2">
           <NavLink to="/" end className={navItemClass}>
             today
           </NavLink>
@@ -31,7 +40,11 @@ export default function App() {
           </NavLink>
         </nav>
       </header>
-      <main className="px-8 py-10">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="px-4 py-8 focus:outline-none sm:px-8 sm:py-10"
+      >
         <Routes>
           <Route path="/" element={<TodayPage />} />
           <Route path="/then-vs-now" element={<ThenVsNowPage />} />

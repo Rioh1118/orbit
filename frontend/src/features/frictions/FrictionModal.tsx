@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { KeyCap } from "@/components/ui/KeyCap";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { useCurrentSlice } from "@/features/slices/hooks";
 import { useCreateFriction } from "./hooks";
 import {
@@ -18,29 +19,43 @@ export function FrictionModal({ open, onClose }: Props) {
   const { data: current } = useCurrentSlice();
   const [tag, setTag] = useState<FrictionPatternTag | null>(null);
   const [description, setDescription] = useState("");
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Reset on open and focus the description.
+  // Drive the native <dialog> from the `open` prop. showModal() gives focus trapping,
+  // an inert background, ESC-to-close, and focus restoration for free (WAI-ARIA APG dialog).
   useEffect(() => {
-    if (open) {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
       setTag(null);
       setDescription("");
-      // Defer focus to after render.
+      create.reset(); // review M3: clear a prior mutation error so it doesn't re-alert on reopen.
       queueMicrotask(() => inputRef.current?.focus());
+    } else if (!open && dialog.open) {
+      dialog.close();
     }
+    // create.reset is stable; depending only on `open` keeps this to open/close transitions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Tag shortcuts work even while typing; we only react when Alt is held.
+  // Lock background scroll while the modal is open (review M4).
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
+  // Quick tag selection with Alt+key while the dialog is open. Alt (not a bare key) is
+  // deliberate: the description textarea holds focus, so bare digits must type, not tag.
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-      if (!e.altKey) return;
-      if (e.metaKey || e.ctrlKey) return;
+      if (!e.altKey || e.metaKey || e.ctrlKey) return;
       const mapped = PATTERN_TAG_BY_KEY[e.key];
       if (mapped) {
         e.preventDefault();
@@ -49,9 +64,7 @@ export function FrictionModal({ open, onClose }: Props) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [open]);
 
   const activeSlice = current ?? undefined;
 
@@ -65,29 +78,31 @@ export function FrictionModal({ open, onClose }: Props) {
       work_slice_id: activeSlice?.id ?? null,
       task_id: activeSlice?.task_id ?? null,
     });
-    onClose();
+    dialogRef.current?.close();
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="record friction"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-canvas/80 px-4 py-12 backdrop-blur-sm"
+    <dialog
+      ref={dialogRef}
+      onClose={onClose}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        // A click whose target is the dialog itself is a backdrop click (content lives
+        // in the child <form>), so dismiss.
+        if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
+      aria-labelledby="friction-modal-title"
+      className="m-auto max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-md border border-instrument/40 bg-surface p-0 text-parchment backdrop:bg-canvas/70"
     >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-xl space-y-4 rounded-md border border-instrument/40 bg-surface p-5 shadow-glow"
-      >
-        <header className="flex items-baseline justify-between">
-          <h2 className="font-mono text-xs uppercase tracking-instrument text-mist">
-            record friction
+      <form onSubmit={handleSubmit} className="space-y-4 p-5">
+        <header className="flex items-baseline justify-between gap-3">
+          <h2
+            id="friction-modal-title"
+            className="text-sm font-medium text-parchment"
+          >
+            詰まりを記録
           </h2>
-          <span className="font-mono text-[10px] uppercase tracking-instrument text-mist">
-            esc to close · alt+1-9,0,a to tag
+          <span className="text-xs text-mist">
+            esc で閉じる · alt+1-9,0,a でタグ
           </span>
         </header>
 
@@ -95,72 +110,79 @@ export function FrictionModal({ open, onClose }: Props) {
           ref={inputRef}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="what stuck?"
+          placeholder="何に詰まった?"
           rows={3}
           maxLength={2000}
           required
-          className="w-full rounded border border-instrument/40 bg-canvas px-3 py-2 text-sm text-parchment focus:border-instrument focus:outline-none"
-          aria-label="friction description"
+          className="w-full rounded border border-instrument/40 bg-canvas px-3 py-2 text-sm text-parchment focus:border-instrument"
+          aria-label="詰まりの内容"
         />
 
         <fieldset className="space-y-2">
-          <legend className="font-mono text-xs uppercase tracking-instrument text-mist">
-            pattern_tag
+          <legend
+            id="friction-tag-label"
+            className="text-sm font-medium text-mist"
+          >
+            パターンタグ
           </legend>
-          <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {/* single-select → radiogroup/radio + aria-checked (review H2 / SC 4.1.2) */}
+          <div
+            role="radiogroup"
+            aria-labelledby="friction-tag-label"
+            className="grid grid-cols-2 gap-1.5 sm:grid-cols-3"
+          >
             {PATTERN_TAGS.map((p) => {
               const active = tag === p.value;
               return (
-                <li key={p.value}>
-                  <button
-                    type="button"
-                    onClick={() => setTag(p.value)}
-                    aria-pressed={active}
-                    className={`flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm hover:border-instrument ${
-                      active
-                        ? "border-instrument bg-elevated text-parchment"
-                        : "border-instrument/30 bg-canvas text-parchment-muted"
-                    }`}
-                  >
-                    <KeyCap k={p.key} size="sm" />
-                    <span className="font-mono text-xs">{p.label}</span>
-                  </button>
-                </li>
+                <button
+                  key={p.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setTag(p.value)}
+                  className={`flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm transition-colors hover:border-instrument ${
+                    active
+                      ? "border-instrument bg-elevated text-parchment"
+                      : "border-instrument/30 bg-canvas text-parchment-muted"
+                  }`}
+                >
+                  <KeyCap k={p.key} size="sm" />
+                  <span className="font-mono text-xs">{p.label}</span>
+                </button>
               );
             })}
-          </ul>
+          </div>
+          {!tag && <p className="text-xs text-mist">タグを選択してください。</p>}
         </fieldset>
 
-        <div className="flex items-center justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-instrument text-mist">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-mist">
             {activeSlice
-              ? `linked to current segment (${activeSlice.mode || activeSlice.off_reason})`
-              : "no current segment — friction will be unlinked"}
+              ? `現在の区間に紐付け (${activeSlice.mode || activeSlice.off_reason})`
+              : "現在の区間なし — 紐付けなしで記録"}
           </p>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={onClose}
-              className="rounded px-3 py-1 font-mono text-xs uppercase tracking-instrument text-mist hover:text-parchment"
+              onClick={() => dialogRef.current?.close()}
+              className="rounded px-3 py-1 text-sm text-mist transition-colors hover:text-parchment"
             >
-              cancel
+              キャンセル
             </button>
             <button
               type="submit"
               disabled={!tag || !description.trim() || create.isPending}
               className="rounded border border-instrument bg-elevated px-3 py-1 text-sm text-parchment disabled:opacity-50"
             >
-              {create.isPending ? "saving…" : "record"}
+              {create.isPending ? "保存中…" : "記録"}
             </button>
           </div>
         </div>
 
         {create.error && (
-          <p className="text-xs text-danger">
-            {(create.error as Error).message}
-          </p>
+          <ErrorText>{(create.error as Error).message}</ErrorText>
         )}
       </form>
-    </div>
+    </dialog>
   );
 }

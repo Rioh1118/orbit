@@ -21,7 +21,6 @@ export default {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
-        serif: ['"Source Serif 4"', "Georgia", "serif"],
       },
       fontSize: {
         xs: ["11px", "16px"],
@@ -39,10 +38,6 @@ export default {
       },
       boxShadow: {
         instrument: "inset 0 1px 0 0 rgb(148 180 193 / 0.08)",
-        glow: "0 0 24px -4px rgb(127 178 142 / 0.25)",
-      },
-      letterSpacing: {
-        instrument: "0.08em",
       },
     },
   },

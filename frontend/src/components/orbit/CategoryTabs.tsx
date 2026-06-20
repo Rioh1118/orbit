@@ -15,16 +15,24 @@ interface CategoryTabsProps {
 }
 
 export function CategoryTabs({ value, onChange }: CategoryTabsProps) {
+  // Mutually-exclusive filter → radiogroup/radio + aria-checked (review H2 / SC 4.1.2),
+  // not aria-pressed (toggle semantics).
   return (
-    <div className="flex flex-wrap gap-1 border-b border-instrument/30">
+    <div
+      role="radiogroup"
+      aria-label="カテゴリ"
+      className="flex flex-wrap gap-1 border-b border-instrument/30"
+    >
       {CATEGORIES.map((c) => {
         const active = c.value === value;
         return (
           <button
             key={c.value}
             type="button"
+            role="radio"
+            aria-checked={active}
             onClick={() => onChange(c.value)}
-            className={`px-3 py-2 font-mono text-xs uppercase tracking-instrument transition-colors ${
+            className={`px-3 py-2 text-sm transition-colors ${
               active
                 ? "-mb-px border-b-2 border-parchment text-parchment"
                 : "text-mist hover:text-parchment"

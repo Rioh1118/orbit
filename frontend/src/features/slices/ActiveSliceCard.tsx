@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { ActiveSliceBanner } from "@/components/orbit/ActiveSliceBanner";
+import { StatusHero, type HeroState } from "@/components/orbit/StatusHero";
+import { ErrorText } from "@/components/ui/ErrorText";
+import { useNow } from "@/lib/useNow";
 import { useTasks } from "@/features/tasks/hooks";
 import { useCurrentSlice, useEndSlice, useStartOff } from "./hooks";
 import { OFF_REASONS, SLICE_MODE_META } from "./types";
@@ -12,102 +13,68 @@ function elapsedMinutes(startedAt: string, now: number): number {
   return Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 60000));
 }
 
+function formatElapsed(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export function ActiveSliceCard() {
   const { data: current, isLoading } = useCurrentSlice();
   const { data: tasksResp } = useTasks();
   const end = useEndSlice();
   const startOff = useStartOff();
-  const [now, setNow] = useState(() => Date.now());
+  const now = useNow();
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
+  if (isLoading) return <p className="text-sm text-mist">読み込み中…</p>;
 
-  if (isLoading)
-    return <p className="text-sm text-mist">loading current segment…</p>;
-
+  let state: HeroState;
   if (!current) {
-    return (
-      <p className="font-mono text-xs uppercase tracking-instrument text-mist">
-        not working — pick a mode below to start
-      </p>
-    );
-  }
-
-  const elapsed = elapsedMinutes(current.started_at, now);
-
-  // Off segment (break/meeting): show plainly with a single end action.
-  if (current.type === "off") {
+    state = { kind: "idle" };
+  } else if (current.type === "off") {
     const reasonLabel =
       OFF_REASONS.find((r) => r.value === current.off_reason)?.label ??
       current.off_reason;
-    return (
-      <div className="flex items-center justify-between rounded border border-instrument/30 bg-surface px-4 py-3">
-        <span className="font-mono text-xs uppercase tracking-instrument text-mist">
-          計測対象外 · {reasonLabel} · {elapsed}m
-        </span>
-        <button
-          type="button"
-          onClick={() => end.mutate(current.id)}
-          className="rounded border border-instrument/40 bg-canvas px-3 py-1 text-sm text-parchment hover:border-instrument"
-        >
-          end
-        </button>
-      </div>
-    );
+    state = {
+      kind: "off",
+      reasonLabel,
+      elapsedLabel: formatElapsed(elapsedMinutes(current.started_at, now)),
+    };
+  } else {
+    const minutes = elapsedMinutes(current.started_at, now);
+    const modeLabel = current.mode
+      ? (SLICE_MODE_META[current.mode]?.label ?? current.mode)
+      : "—";
+    const taskTitle = current.task_id
+      ? (tasksResp?.data.find((t) => t.id === current.task_id)?.title ?? "—")
+      : "";
+    state = {
+      kind: "working",
+      modeLabel,
+      driverLabel: current.driver || "—",
+      taskTitle,
+      elapsedLabel: formatElapsed(minutes),
+      stale: minutes > RECOVERY_THRESHOLD_MIN,
+    };
   }
 
-  const meta = current.mode ? SLICE_MODE_META[current.mode] : undefined;
-  const taskTitle = current.task_id
-    ? (tasksResp?.data.find((t) => t.id === current.task_id)?.title ?? "—")
-    : "(no task)";
+  const handleEnd = current ? () => end.mutate(current.id) : undefined;
+  const handleBreak =
+    current && current.type === "work"
+      ? () => startOff.mutate({ reason: "break" })
+      : undefined;
 
   return (
-    <div className="space-y-3">
-      {elapsed > RECOVERY_THRESHOLD_MIN && (
-        <div className="flex items-center justify-between rounded border border-friction/50 bg-surface px-4 py-2">
-          <span className="font-mono text-xs text-friction">
-            この区間が {Math.floor(elapsed / 60)}h 開いたままです。閉じ忘れ?
-          </span>
-          <button
-            type="button"
-            onClick={() => end.mutate(current.id)}
-            className="rounded border border-friction/50 px-3 py-1 text-sm text-parchment hover:border-friction"
-          >
-            閉じる
-          </button>
-        </div>
-      )}
-      <ActiveSliceBanner
-        taskTitle={taskTitle}
-        mode={`${current.mode} · ${current.driver}`}
-        modeKey={meta?.key ?? "?"}
-        elapsedMinutes={elapsed}
+    <div className="space-y-2">
+      <StatusHero
+        state={state}
+        onEnd={handleEnd}
+        onBreak={handleBreak}
+        busy={end.isPending || startOff.isPending}
       />
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => end.mutate(current.id)}
-          className="rounded border border-instrument/40 bg-surface px-3 py-1.5 text-sm text-parchment hover:border-instrument"
-        >
-          end segment
-        </button>
-        <button
-          type="button"
-          onClick={() => startOff.mutate({ reason: "break" })}
-          className="font-mono text-xs uppercase tracking-instrument text-mist hover:text-parchment"
-        >
-          休憩
-        </button>
-      </div>
-      {end.error && (
-        <p className="text-xs text-danger">{(end.error as Error).message}</p>
-      )}
+      {end.error && <ErrorText>{(end.error as Error).message}</ErrorText>}
       {startOff.error && (
-        <p className="text-xs text-danger">
-          {(startOff.error as Error).message}
-        </p>
+        <ErrorText>{(startOff.error as Error).message}</ErrorText>
       )}
     </div>
   );

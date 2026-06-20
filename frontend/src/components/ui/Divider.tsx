@@ -9,7 +9,7 @@ export function Divider({ label }: DividerProps) {
   return (
     <div className="flex items-center gap-3">
       <hr className="flex-1 border-instrument/30" />
-      <span className="font-mono text-xs uppercase tracking-instrument text-mist">{label}</span>
+      <span className="text-xs font-medium text-mist">{label}</span>
       <hr className="flex-1 border-instrument/30" />
     </div>
   );
