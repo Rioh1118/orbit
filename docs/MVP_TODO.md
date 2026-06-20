@@ -1,5 +1,9 @@
 # Phase 1 MVP TODO
 
+> **整合注記**: [ADR 005](./ADR/005-craft-time-model.md) で再設計済み。Insight/density/severity 削除、
+> mode 11値(study追加・review統合)×driver、category 6値、状態機械、計測対象外、停滞は件数主。
+> 実装は Stage 1 (`feat/craft-time-model`) → Stage 2 (`feat/ui-simplify`) の2段。
+
 > Phase 1 のゴール: **「同じ作業、前より速くなった?」** に Then vs Now 画面で答えられる状態。
 > 詳細は [PRODUCT_BRIEF.md](./PRODUCT_BRIEF.md) / [ROADMAP.md](./ROADMAP.md) / [ADR/004-pivot-to-growth-sensation.md](./ADR/004-pivot-to-growth-sensation.md) を参照。
 

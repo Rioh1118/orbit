@@ -1,5 +1,10 @@
 # Orbit API Design
 
+> **整合注記**: 本書は ADR 004 時点の定義。[ADR 005](./ADR/005-craft-time-model.md) により Stage 1
+> (`feat/craft-time-model`) で更新予定 — `/v1/insights` 廃止、作業区間 API を状態機械 (開始=前を自動close /
+> 計測対象外 type=off / driver) に再設計、Then vs Now 集計を `{category × 時間窓}` グロスに、
+> `density`/`severity` 廃止、`pattern_tag` に `waiting_ai` 追加。詳細は ADR 005 / DATA_MODEL.md を正とする。
+
 ## Base URL
 
 - Local dev: `http://localhost:8080`

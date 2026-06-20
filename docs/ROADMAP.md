@@ -1,5 +1,8 @@
 # Orbit Roadmap
 
+> **整合注記**: Phase 1 のスコープは [ADR 005](./ADR/005-craft-time-model.md) に整合 —
+> Insight は defer、Phase 1 は Task / 作業区間(状態機械) / 停滞 / Today / Then vs Now(グロス) の4機能。
+
 ## 全体方針
 
 - 各 Phase は **Done の定義** を必ず持つ

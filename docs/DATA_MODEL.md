@@ -1,5 +1,9 @@
 # Orbit Data Model
 
+> **整合状態**: 本書は [ADR 005](./ADR/005-craft-time-model.md) に整合済み。
+> ADR 004 由来の旧定義 (category 7値 / mode に ai_review·human_review / density / severity / Insight /
+> 複数オープン区間) は ADR 005 で上書きされている。
+
 ## 設計原則
 
 - すべてのテーブルに `id` (UUIDv7) と `created_at` `updated_at` (timestamptz UTC)
@@ -15,18 +19,17 @@
 
 ```
 users (1) ──< (N) tasks
-users (1) ──< (N) work_slices
-users (1) ──< (N) frictions
-users (1) ──< (N) insights
+users (1) ──< (N) work_slices        (作業区間 Segment。type=work / off の直交2層)
+users (1) ──< (N) frictions          (停滞)
 users (1) ──< (N) activity_events
 
 tasks (1) ──< (N) work_slices       (work_slice.task_id  は NULL 可)
 tasks (1) ──< (N) frictions          (friction.task_id    は NULL 可)
-tasks (1) ──< (N) insights           (insight.task_id     は NULL 可)
 
 work_slices (1) ──< (N) frictions    (friction.work_slice_id は NULL 可)
-frictions   (1) ──< (N) insights     (insight.friction_id    は NULL 可)
 ```
+
+> `insights` は ADR 005 で削除 (defer)。Insight / density / severity / friction.kind は持たない。
 
 ## Tables
 
@@ -46,7 +49,8 @@ Phase 1 は `cmd/keygen -email <email>` で1ユーザー作成、生キーは st
 
 ### `tasks`
 
-`category` は Then vs Now の主軸。**1 Task = 1 category**。
+`category` は Then vs Now の **facet 軸**。**1 Task = 1 category**。
+比較単位は `{category × 時間窓}` のグロス (ADR 005)。
 
 | Column | Type | Notes |
 |---|---|---|
@@ -54,7 +58,7 @@ Phase 1 は `cmd/keygen -email <email>` で1ユーザー作成、生キーは st
 | user_id | uuid | FK users.id, NOT NULL |
 | title | text | NOT NULL, ≤200 |
 | description | text | NULL OK, ≤5000 |
-| **category** | **text** | **NOT NULL CHECK (...) — 後述7値** |
+| **category** | **text** | **NOT NULL CHECK (...) — 後述6値** |
 | status | text | enum: `open` / `in_progress` / `blocked` / `done` / `archived` |
 | external_ref | text | GitHub Issue URL等、NULL OK |
 | started_at | timestamptz | 最初の Slice で自動セット |
@@ -64,11 +68,10 @@ Phase 1 は `cmd/keygen -email <email>` で1ユーザー作成、生キーは st
 | updated_at | timestamptz | NOT NULL DEFAULT now() |
 | deleted_at | timestamptz | NULL OK (ソフト削除) |
 
-**`category` enum** (固定7値、free-form tag は採用しない):
+**`category` enum** (固定6値、free-form tag は採用しない):
 
 | value | 説明 |
 |---|---|
-| `learning` | 新技術・新領域の学習 |
 | `new_feature` | 新規機能実装 |
 | `bug_fix` | バグ修正 |
 | `refactor` | リファクタリング |
@@ -76,73 +79,88 @@ Phase 1 は `cmd/keygen -email <email>` で1ユーザー作成、生キーは st
 | `support` | サポート・運用作業 |
 | `other` | その他 |
 
+> `learning` は産出物の種類ではなく「不慣れか否か」の別軸のため category から削除 (ADR 005)。
+> 学習は mode signature (`study`+`code_explore` の割合が厚い) として観測する。
+
 **インデックス**:
-- `(user_id, category, created_at DESC)` — Then vs Now の主クエリ
+- `(user_id, category, created_at DESC)` — Then vs Now (category facet グロス) の主クエリ
 - `(user_id, status)` — ステータス別取得
 - `(user_id) WHERE deleted_at IS NULL` 部分インデックス
 
-### `work_slices`
+### `work_slices` (= 作業区間 Segment)
 
-作業セッション。**mode は実例ベース 11値**。終了時に `density` を1キーで入力。
+タイムラインの一区間。**WORK / 計測対象外 の直交2層**を `type` で表す (ADR 005)。
+WORK 区間のみ `mode`×`driver` を持ち成長集計に入る。density は廃止。
 
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid | PK |
 | user_id | uuid | FK users.id, NOT NULL |
-| task_id | uuid | FK tasks.id, NULL OK |
-| **mode** | **text** | **NOT NULL CHECK (...) — 後述11値** |
+| task_id | uuid | FK tasks.id, NULL OK (WORK のみ) |
+| **type** | **text** | **NOT NULL CHECK (type IN ('work','off'))** |
+| **mode** | **text** | **NULL OK (type='work' の時 NOT NULL) CHECK (...) — 後述11値** |
+| **driver** | **text** | **NULL OK (type='work' の時 NOT NULL) CHECK (driver IN ('solo','ai','human')) DEFAULT 'solo'** |
+| **off_reason** | **text** | **NULL OK (type='off' の時 NOT NULL) CHECK (off_reason IN ('break','meeting','other'))** |
 | started_at | timestamptz | NOT NULL |
-| ended_at | timestamptz | NULL = 進行中 |
+| ended_at | timestamptz | NULL = 進行中 (高々1つ。下記不変条件) |
 | duration_sec | int | ended_at セット時にアプリ側で計算 |
-| **density** | **int** | **NULL OK, CHECK (density BETWEEN 1 AND 5)** Slice終了時1キー入力 |
 | note | text | NULL OK, ≤1000 |
 | metadata | jsonb | DEFAULT '{}' |
 | created_at | timestamptz | NOT NULL DEFAULT now() |
 | updated_at | timestamptz | NOT NULL DEFAULT now() |
 
-**`mode` enum** (固定11値):
+**`mode` enum** (固定11値、`type='work'` の時のみ):
 
 | value | 説明 | 1キー |
 |---|---|---|
-| `spec_read` | 仕様書・要件確認 | S |
+| `spec_read` | タスクの仕様・要件の理解 | S |
 | `task_breakdown` | やること整理・段取り | B |
+| `study` | 外部ドキュメント/RFC/新技術の習得 | Y |
 | `code_explore` | 既存コード/変数定義の追跡 | E |
 | `design` | 設計 | G |
-| `implement` | コーディング | I |
+| `implement` | コード産出 | I |
+| `review` | レビュー (driver で自/AI/人を区別) | R |
 | `verify` | 手動動作確認・テスト実行 | V |
 | `debug` | バグ調査 | D |
-| `ai_review` | AI レビュー | A |
-| `human_review` | 人レビュー (する/される) | R |
-| `consult` | 相談・質問 | C |
+| `consult` | 相談・問い合わせ | C |
 | `other` | その他 | O |
 
-**旧 mode 値からのマッピング** (migration 00007 で使用):
+> ADR 005 変更点: `study` 追加 / `ai_review`+`human_review` → `review` に統合 (driver で区別)。
 
-| 旧 (9値) | 新 (11値) |
+**`driver` enum** (固定3値、`type='work'` の時のみ、既定 `solo`):
+
+| value | 意味 | 例 |
+|---|---|---|
+| `solo` | 自分の手 | `implement × solo` = 手書き / `review × solo` = セルフレビュー |
+| `ai` | AIが駆動、自分は舵取り/レビュー | `implement × ai` / `review × ai` = AI出力レビュー / `study × ai` |
+| `human` | 他者と | `review × human` = 人とのコードレビュー / `implement × human` = ペア |
+
+**`off_reason` enum** (固定3値、`type='off'` の時のみ。**成長集計から除外・分析しない**):
+
+| value | 意味 |
 |---|---|
-| `spec` | `spec_read` |
-| `explore` | `code_explore` |
-| `design` | `design` |
-| `implement` | `implement` |
-| `test` | `verify` |
-| `debug` | `debug` |
-| `review` | `human_review` |
-| `consult` | `consult` |
-| `other` | `other` |
+| `break` | 休憩・離席 |
+| `meeting` | 儀礼的/coordination 会議 (craft の頭を使う協働は WORK の `× human` で記録) |
+| `other` | その他の計測対象外時間 |
 
-**制約**:
+**制約・不変条件** (ADR 005 状態機械):
 - `CHECK (ended_at IS NULL OR ended_at >= started_at)`
-- 同時に複数のオープン Slice 可 (手動 stop 忘れはアプリ側で warn)
+- **ユーザーあたり `ended_at IS NULL` の区間は高々1つ** (単一現在活動)。
+  新しい区間を開く時、アプリ側で前の開区間を自動 close する。
+- `type='work'` ⇒ `mode`/`driver` NOT NULL、`off_reason` NULL。
+  `type='off'` ⇒ `off_reason` NOT NULL、`mode`/`driver`/`task_id` NULL。
+- 旧データ移行は行わない (ADR 005、dev データのみ)。
 
 **インデックス**:
 - `(user_id, started_at DESC)`
 - `(task_id, started_at DESC)` 部分インデックス (task_id IS NOT NULL)
-- `(user_id) WHERE ended_at IS NULL` — 進行中検索
-- `(user_id, mode, started_at DESC)` — Then vs Now の主クエリ
+- `(user_id) WHERE ended_at IS NULL` — 現在の開区間検索 (高々1行)
+- `(user_id, mode, started_at DESC) WHERE type = 'work'` — グロス集計の主クエリ
 
-### `frictions`
+### `frictions` (= 停滞)
 
-詰まりの記録。**`pattern_tag` を追加**。
+進行が止まったイベント。`pattern_tag` で分類。**件数が主シグナル**、解決ラグは任意の副シグナル。
+**時間として mode と合算しない** (区間タイムラインに重なる別レンズ。二重計上を禁止 — ADR 005)。
 
 | Column | Type | Notes |
 |---|---|---|
@@ -150,17 +168,17 @@ Phase 1 は `cmd/keygen -email <email>` で1ユーザー作成、生キーは st
 | user_id | uuid | FK users.id, NOT NULL |
 | task_id | uuid | FK tasks.id, NULL OK |
 | work_slice_id | uuid | FK work_slices.id, NULL OK |
-| ~~kind~~ | ~~text~~ | **deprecated**: pattern_tag に統合、Phase 1.x で DROP COLUMN |
-| **pattern_tag** | **text** | **NOT NULL CHECK (...) — 後述10値** |
-| severity | int | CHECK (severity BETWEEN 1 AND 3), DEFAULT 1 |
+| **pattern_tag** | **text** | **NOT NULL CHECK (...) — 後述11値** |
 | description | text | NOT NULL, ≤2000 |
-| resolved_at | timestamptz | NULL = 未解決 |
+| resolved_at | timestamptz | NULL = 未解決 (任意。強制しない) |
 | resolution_note | text | NULL OK, ≤2000 |
 | metadata | jsonb | DEFAULT '{}' |
 | created_at | timestamptz | NOT NULL DEFAULT now() |
 | updated_at | timestamptz | NOT NULL DEFAULT now() |
 
-**`pattern_tag` enum** (固定10値):
+> ADR 005 変更点: `severity` 削除 / 旧 `kind` 列削除 / `waiting_ai` 追加。
+
+**`pattern_tag` enum** (固定11値):
 
 | value | 例 |
 |---|---|
@@ -172,47 +190,14 @@ Phase 1 は `cmd/keygen -email <email>` で1ユーザー作成、生キーは st
 | `flaky_test` | テストが不安定 |
 | `unclear_spec` | 仕様が曖昧 |
 | `waiting_human` | 人待ち |
+| `waiting_ai` | AIの実行待ちでブロック |
 | `tool_quirk` | ツールの挙動が謎 |
 | `concept_gap` | 概念がそもそも分かっていない |
 
-**旧 kind 値からのマッピング** (migration 00008 で使用):
-
-| 旧 kind | 新 pattern_tag |
-|---|---|
-| `spec_unclear` | `unclear_spec` |
-| `code_not_found` | `cant_find` |
-| `tool_failure` | `tool_quirk` |
-| `waiting_review` | `waiting_human` |
-| `waiting_answer` | `waiting_human` |
-| `bug_repeat` | `unexpected_state` |
-| `env_issue` | `env_setup` |
-| `other` | `tool_quirk` (fallback) |
-
 **インデックス**:
 - `(user_id, created_at DESC)`
-- `(user_id, pattern_tag, created_at DESC)` — pattern別集計の主クエリ
+- `(user_id, pattern_tag, created_at DESC)` — pattern別グロス件数の主クエリ
 - `(user_id) WHERE resolved_at IS NULL` — 未解決一覧
-
-### `insights` (新規)
-
-「分からなかったこと」と「分かったこと」を before/after で記録する。**成長の最小単位**。
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | PK |
-| user_id | uuid | FK users.id, NOT NULL |
-| task_id | uuid | FK tasks.id, NULL OK |
-| friction_id | uuid | FK frictions.id, NULL OK |
-| before_text | text | NULL OK, ≤1000 — 分からなかったこと |
-| after_text | text | NOT NULL, ≤1000 — 分かったこと |
-| metadata | jsonb | DEFAULT '{}' |
-| created_at | timestamptz | NOT NULL DEFAULT now() |
-| updated_at | timestamptz | NOT NULL DEFAULT now() |
-
-**インデックス**:
-- `(user_id, created_at DESC)` — 一覧 + density 集計
-- `(task_id)` 部分インデックス (task_id IS NOT NULL)
-- `(friction_id)` 部分インデックス (friction_id IS NOT NULL)
 
 ### `activity_events`
 
@@ -235,11 +220,13 @@ Phase 2 でパーティショニング (月次) を検討。
 
 | Enum | 値 (個数) |
 |---|---|
-| `task.category` | `learning`, `new_feature`, `bug_fix`, `refactor`, `investigation`, `support`, `other` (7) |
+| `task.category` | `new_feature`, `bug_fix`, `refactor`, `investigation`, `support`, `other` (6) |
 | `task.status` | `open`, `in_progress`, `blocked`, `done`, `archived` (5) |
-| `work_slice.mode` | `spec_read`, `task_breakdown`, `code_explore`, `design`, `implement`, `verify`, `debug`, `ai_review`, `human_review`, `consult`, `other` (11) |
-| `friction.pattern_tag` | `cant_find`, `unexpected_state`, `type_mismatch`, `api_contract`, `env_setup`, `flaky_test`, `unclear_spec`, `waiting_human`, `tool_quirk`, `concept_gap` (10) |
-| `friction.severity` | `1` (low), `2` (med), `3` (high) |
+| `work_slice.type` | `work`, `off` (2) |
+| `work_slice.mode` | `spec_read`, `task_breakdown`, `study`, `code_explore`, `design`, `implement`, `review`, `verify`, `debug`, `consult`, `other` (11) |
+| `work_slice.driver` | `solo`, `ai`, `human` (3) |
+| `work_slice.off_reason` | `break`, `meeting`, `other` (3) |
+| `friction.pattern_tag` | `cant_find`, `unexpected_state`, `type_mismatch`, `api_contract`, `env_setup`, `flaky_test`, `unclear_spec`, `waiting_human`, `waiting_ai`, `tool_quirk`, `concept_gap` (11) |
 
 - Go コード側で `type Foo string` + 定数 + `Valid()` メソッドの統一パターン
 - フロントは API レスポンスを正として扱う (enum一覧 API は Phase 1 では作らない)
@@ -255,21 +242,32 @@ backend/db/migrations/
 ├── 00003_create_work_slices.sql        (既存)
 ├── 00004_create_frictions.sql          (既存)
 ├── 00005_create_activity_events.sql    (既存)
-├── 00006_tasks_add_category.sql        (ADR 004で追加)
-├── 00007_work_slices_mode_redefine.sql (ADR 004 — CHECK 制約置換 + 旧値マッピング)
-├── 00008_frictions_add_pattern_tag.sql (ADR 004 — pattern_tag追加 + kind→pattern_tag変換)
-├── 00009_create_insights.sql           (ADR 004 — 新規)
-└── 00010_work_slices_add_density.sql   (ADR 004 — density列追加)
+├── 00006_tasks_add_category.sql        (ADR 004)
+├── 00007_work_slices_mode_redefine.sql (ADR 004)
+├── 00008_work_slices_add_density.sql   (ADR 004 — 実在順)
+├── 00009_frictions_add_pattern_tag.sql (ADR 004 — 実在順)
+└── 00010+ ...                          (ADR 005 — 下記)
 ```
+
+**ADR 005 で追加する migration (00010 以降、データ移行なし)**:
+- `tasks` category CHECK を 6 値に張り直し (`learning` 削除)
+- `work_slices` に `type` / `driver` / `off_reason` 列追加、`mode` CHECK を 11値 (`study` 追加・review 統合) に張り直し、`density` 列 DROP
+- `frictions` `pattern_tag` CHECK を 11値 (`waiting_ai` 追加) に張り直し、`severity`・`kind` 列 DROP
+- `user_settings` (idle検知 有無+閾値 / 最大区間長 有無+閾値) の追加 — 状態機械の opt-in ガード用
+
+> ADR 004 の docs では 00009=insights / 00010=density を予定していたが、実在の migration は
+> 00008=density / 00009=pattern_tag で、insights は作られなかった。本書は実在順に整合済み。
 
 各ファイルは `-- +goose Up` / `-- +goose Down` を必ず両方書く。
 
 ## DBレベルの不変条件
 
 - `work_slices.duration_sec` は ended_at セット時にアプリ側で計算して INSERT/UPDATE
-- `tasks.started_at` は最初の work_slice 作成時にアプリ側で set
+- **ユーザーあたり `ended_at IS NULL` の work_slice は高々1つ** (単一現在活動)。新区間を開く時に
+  前の開区間をアプリ側で自動 close する。復帰時に異常に長い開区間があれば確認 (常時ON)。
+- `tasks.started_at` は最初の work_slice (type='work') 作成時にアプリ側で set
 - ソフト削除は `tasks` のみ
-- `frictions.kind` 列は migration 00008 以降 deprecated。Go/sqlcから参照を消し、Phase 1.x で DROP COLUMN する
+- `frictions` は時間として集計しない (件数が主シグナル)。mode 時間との二重計上を禁止する
 
 ## アーキテクチャ原則 (実装で守るべき依存方向)
 
