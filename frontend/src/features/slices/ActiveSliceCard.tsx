@@ -4,6 +4,10 @@ import { useTasks } from "@/features/tasks/hooks";
 import { useCurrentSlice, useEndSlice, useStartOff } from "./hooks";
 import { OFF_REASONS, SLICE_MODE_META } from "./types";
 
+// Always-on recovery guard (ADR 005 / review M1): if a work segment has been open
+// this long, it was almost certainly forgotten — prompt to close before it pollutes data.
+const RECOVERY_THRESHOLD_MIN = 8 * 60;
+
 function elapsedMinutes(startedAt: string, now: number): number {
   return Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 60000));
 }
@@ -31,6 +35,8 @@ export function ActiveSliceCard() {
     );
   }
 
+  const elapsed = elapsedMinutes(current.started_at, now);
+
   // Off segment (break/meeting): show plainly with a single end action.
   if (current.type === "off") {
     const reasonLabel =
@@ -39,8 +45,7 @@ export function ActiveSliceCard() {
     return (
       <div className="flex items-center justify-between rounded border border-instrument/30 bg-surface px-4 py-3">
         <span className="font-mono text-xs uppercase tracking-instrument text-mist">
-          計測対象外 · {reasonLabel} · {elapsedMinutes(current.started_at, now)}
-          m
+          計測対象外 · {reasonLabel} · {elapsed}m
         </span>
         <button
           type="button"
@@ -60,11 +65,25 @@ export function ActiveSliceCard() {
 
   return (
     <div className="space-y-3">
+      {elapsed > RECOVERY_THRESHOLD_MIN && (
+        <div className="flex items-center justify-between rounded border border-friction/50 bg-surface px-4 py-2">
+          <span className="font-mono text-xs text-friction">
+            この区間が {Math.floor(elapsed / 60)}h 開いたままです。閉じ忘れ?
+          </span>
+          <button
+            type="button"
+            onClick={() => end.mutate(current.id)}
+            className="rounded border border-friction/50 px-3 py-1 text-sm text-parchment hover:border-friction"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
       <ActiveSliceBanner
         taskTitle={taskTitle}
         mode={`${current.mode} · ${current.driver}`}
         modeKey={meta?.key ?? "?"}
-        elapsedMinutes={elapsedMinutes(current.started_at, now)}
+        elapsedMinutes={elapsed}
       />
       <div className="flex items-center gap-3">
         <button
@@ -84,6 +103,11 @@ export function ActiveSliceCard() {
       </div>
       {end.error && (
         <p className="text-xs text-danger">{(end.error as Error).message}</p>
+      )}
+      {startOff.error && (
+        <p className="text-xs text-danger">
+          {(startOff.error as Error).message}
+        </p>
       )}
     </div>
   );

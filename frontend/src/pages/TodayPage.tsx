@@ -51,6 +51,12 @@ export default function TodayPage() {
   const { data, isLoading, error } = useSlices({ from, to, limit: 200 });
   const { data: openFrictions } = useOpenFrictions();
   const [frictionOpen, setFrictionOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Global hotkey `f` to record a friction (ignored while typing).
   useEffect(() => {
@@ -68,33 +74,31 @@ export default function TodayPage() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const slices = data?.data ?? [];
-  // Growth time is craft only; off segments (break/meeting) are excluded (ADR 005).
-  const workSlices = slices.filter((s) => s.type === "work");
-  const now = Date.now();
-  const totalSec = workSlices.reduce(
-    (acc, s) => acc + sliceDurationSec(s, now),
-    0,
-  );
-
-  const modeSlices = useMemo(() => {
-    if (totalSec === 0) return [];
+  // Single memo over the query result + clock tick (review M4: stable deps).
+  const { workCount, totalSec, modeSlices } = useMemo(() => {
+    const slices = data?.data ?? [];
+    // Growth time is craft only; off segments (break/meeting) are excluded (ADR 005).
+    const work = slices.filter((s) => s.type === "work");
+    const total = work.reduce((acc, s) => acc + sliceDurationSec(s, now), 0);
+    if (total === 0)
+      return { workCount: work.length, totalSec: 0, modeSlices: [] };
     const byMode = new Map<SliceMode, number>();
-    for (const s of workSlices) {
+    for (const s of work) {
       if (!s.mode) continue;
       const mode = s.mode as SliceMode;
       byMode.set(mode, (byMode.get(mode) ?? 0) + sliceDurationSec(s, now));
     }
-    return Array.from(byMode.entries()).map(([mode, secs]) => {
+    const bars = Array.from(byMode.entries()).map(([mode, secs]) => {
       const meta = SLICE_MODE_META[mode];
       return {
         mode,
         label: meta?.label ?? mode,
         modeKey: meta?.key ?? "?",
-        pct: Math.round((secs / totalSec) * 100),
+        pct: Math.round((secs / total) * 100),
       };
     });
-  }, [workSlices, totalSec, now]);
+    return { workCount: work.length, totalSec: total, modeSlices: bars };
+  }, [data, now]);
 
   const openCount = openFrictions?.data.length ?? 0;
 
@@ -129,7 +133,7 @@ export default function TodayPage() {
 
       <section className="grid grid-cols-3 gap-3">
         <StatTile label="focus" value={formatHM(totalSec)} hint="today" />
-        <StatTile label="segments" value={workSlices.length} hint="today" />
+        <StatTile label="segments" value={workCount} hint="today" />
         <StatTile label="frictions" value={openCount} hint="open" />
       </section>
 

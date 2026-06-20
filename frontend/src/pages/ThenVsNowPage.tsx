@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts";
 import { CategoryTabs, type Category } from "@/components/orbit/CategoryTabs";
 import {
   ThenVsNowChart,
@@ -6,43 +7,77 @@ import {
 } from "@/components/orbit/ThenVsNowChart";
 import { Divider } from "@/components/ui/Divider";
 import { StatTile } from "@/components/orbit/StatTile";
+import { chartTheme } from "@/lib/chartTheme";
 import { useThenVsNow } from "@/features/reports/hooks";
 
 const MIN_WEEKS_FOR_SIGNAL = 2;
 
 function shortWeek(week: string): string {
-  // "2026-06-15" -> "06-15"
   return week.length >= 10 ? week.slice(5) : week;
 }
 
-function formatHM(seconds: number): string {
-  const m = Math.round(seconds / 60);
-  const h = Math.floor(m / 60);
-  return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
-}
-
-function pctChange(first: number, last: number): string {
-  if (first === 0) return "—";
-  return `${Math.round(((last - first) / first) * 100)}%`;
+function pct(x: number): string {
+  return `${Math.round(x * 100)}%`;
 }
 
 export default function ThenVsNowPage() {
   const [category, setCategory] = useState<Category>("new_feature");
   const { data, isLoading, error } = useThenVsNow(category);
 
-  const { points, modes } = useMemo(() => {
-    if (!data) return { points: [] as WeekPoint[], modes: [] as string[] };
+  // Build week points (minutes per mode) + per-week totals for share math.
+  const { points, modes, totals } = useMemo(() => {
+    if (!data) {
+      return {
+        points: [] as WeekPoint[],
+        modes: [] as string[],
+        totals: [] as number[],
+      };
+    }
     const byWeek = new Map<string, WeekPoint>();
+    const order: string[] = [];
     const modeSet = new Set<string>();
     for (const r of data.mode_by_week) {
       modeSet.add(r.mode);
-      const w =
-        byWeek.get(r.week) ?? ({ week: shortWeek(r.week) } as WeekPoint);
-      w[r.mode] = Math.round(r.seconds / 60);
-      byWeek.set(r.week, w);
+      if (!byWeek.has(r.week)) {
+        byWeek.set(r.week, { week: shortWeek(r.week) } as WeekPoint);
+        order.push(r.week);
+      }
+      const w = byWeek.get(r.week);
+      if (w) w[r.mode] = Math.round(r.seconds / 60);
     }
-    return { points: Array.from(byWeek.values()), modes: Array.from(modeSet) };
+    const pts = order.map((k) => byWeek.get(k) as WeekPoint);
+    const tot = pts.map((p) =>
+      Object.entries(p).reduce(
+        (a, [k, v]) => (k === "week" ? a : a + Number(v)),
+        0,
+      ),
+    );
+    return { points: pts, modes: Array.from(modeSet), totals: tot };
   }, [data]);
+
+  // Share-point delta first→now for a mode (review H1: proportion, not absolute).
+  const shareDelta = (mode: string): string => {
+    if (points.length < MIN_WEEKS_FOR_SIGNAL) return "—";
+    const first = totals[0] ? Number(points[0][mode] ?? 0) / totals[0] : 0;
+    const lastIdx = points.length - 1;
+    const last = totals[lastIdx]
+      ? Number(points[lastIdx][mode] ?? 0) / totals[lastIdx]
+      : 0;
+    return `${pct(first)} → ${pct(last)}`;
+  };
+
+  // Completion-time trend: avg own-time/task per week, low-N weeks suppressed (review H2 / 原則4).
+  const completionSeries = useMemo(
+    () =>
+      (data?.completed_by_week ?? [])
+        .filter((c) => c.task_count >= 1)
+        .map((c) => ({
+          week: shortWeek(c.week),
+          min: Math.round(c.avg_seconds_per_task / 60),
+          n: c.task_count,
+        })),
+    [data],
+  );
 
   const frictionSummary = useMemo(() => {
     const byTag = new Map<string, number>();
@@ -56,16 +91,6 @@ export default function ThenVsNowPage() {
       .join(" · ");
     return { total, detail };
   }, [data]);
-
-  // first→now change for a signal mode (minutes).
-  const changeFor = (mode: string): string => {
-    if (points.length < MIN_WEEKS_FOR_SIGNAL) return "—";
-    const first = Number(points[0][mode] ?? 0);
-    const last = Number(points[points.length - 1][mode] ?? 0);
-    return pctChange(first, last);
-  };
-
-  const latestCompleted = data?.completed_by_week.at(-1);
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
@@ -95,32 +120,54 @@ export default function ThenVsNowPage() {
       {points.length >= MIN_WEEKS_FOR_SIGNAL && (
         <>
           <section>
-            <Divider label="mode allocation / weekly (minutes)" />
+            <Divider label="mode allocation / weekly share" />
             <div className="mt-5">
               <ThenVsNowChart data={points} modes={modes} />
             </div>
           </section>
 
-          <section className="grid grid-cols-3 gap-3">
+          <section className="grid grid-cols-2 gap-3">
             <StatTile
-              label="code explore"
-              value={changeFor("code_explore")}
+              label="code explore share"
+              value={shareDelta("code_explore")}
               hint="first → now"
             />
             <StatTile
-              label="implement"
-              value={changeFor("implement")}
+              label="implement share"
+              value={shareDelta("implement")}
               hint="first → now"
             />
-            <StatTile
-              label="completion / task"
-              value={
-                latestCompleted
-                  ? formatHM(latestCompleted.avg_seconds_per_task)
-                  : "—"
-              }
-              hint="latest week avg"
-            />
+          </section>
+
+          <section>
+            <Divider label="completion time / task (min)" />
+            {completionSeries.length < MIN_WEEKS_FOR_SIGNAL ? (
+              <p className="mt-4 font-mono text-xs uppercase tracking-instrument text-mist">
+                データ不足 — 完了タスクが足りません
+              </p>
+            ) : (
+              <div className="mt-4 h-24 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={completionSeries}
+                    margin={{ top: 6, right: 8, left: -8, bottom: 0 }}
+                  >
+                    <YAxis hide domain={["auto", "auto"]} />
+                    <Tooltip
+                      contentStyle={chartTheme.tooltipStyle}
+                      formatter={(v: number | string) => `${Number(v)}m`}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="min"
+                      stroke="var(--color-growth)"
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </section>
 
           <section>

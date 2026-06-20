@@ -50,14 +50,6 @@ export function useStartOff() {
   });
 }
 
-export function useStopWork() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => slicesApi.stop(),
-    onSuccess: () => invalidate(qc),
-  });
-}
-
 export function useEndSlice() {
   const qc = useQueryClient();
   return useMutation({

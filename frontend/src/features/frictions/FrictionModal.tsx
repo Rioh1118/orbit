@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { KeyCap } from "@/components/ui/KeyCap";
-import { useActiveSlices } from "@/features/slices/hooks";
+import { useCurrentSlice } from "@/features/slices/hooks";
 import { useCreateFriction } from "./hooks";
 import {
   PATTERN_TAGS,
@@ -15,7 +15,7 @@ interface Props {
 
 export function FrictionModal({ open, onClose }: Props) {
   const create = useCreateFriction();
-  const { data: actives } = useActiveSlices();
+  const { data: current } = useCurrentSlice();
   const [tag, setTag] = useState<FrictionPatternTag | null>(null);
   const [description, setDescription] = useState("");
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -53,7 +53,7 @@ export function FrictionModal({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  const activeSlice = actives?.[0];
+  const activeSlice = current ?? undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
