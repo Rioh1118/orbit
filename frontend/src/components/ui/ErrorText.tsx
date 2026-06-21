@@ -4,16 +4,19 @@ interface ErrorTextProps {
   children: ReactNode;
 }
 
-// danger-on-surface is only 2.78:1 — below the WCAG 1.4.3 AA text minimum (4.5:1).
-// So error text uses high-contrast parchment with a danger accent bar instead of danger
-// text. role="alert" makes screen readers announce it the moment it appears.
+// danger #c0392b is 5.44:1 on surface / 5.07:1 on canvas — passes WCAG 1.4.3 (4.5:1),
+// so error text uses the danger colour directly. role="alert" announces on appearance;
+// fadeIn is motion-safe so reduced-motion users get it instantly.
 export function ErrorText({ children }: ErrorTextProps) {
   return (
     <p
       role="alert"
-      className="border-l-2 border-danger pl-2.5 text-sm text-parchment"
+      className="flex items-start gap-1.5 text-sm text-danger motion-safe:animate-[fadeIn_200ms_ease-out]"
     >
-      {children}
+      <span aria-hidden className="mt-px select-none">
+        ⚠
+      </span>
+      <span>{children}</span>
     </p>
   );
 }

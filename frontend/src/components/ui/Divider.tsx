@@ -4,13 +4,15 @@ interface DividerProps {
 
 export function Divider({ label }: DividerProps) {
   if (!label) {
-    return <hr className="border-instrument/30" />;
+    return <hr className="border-border" />;
   }
   return (
     <div className="flex items-center gap-3">
-      <hr className="flex-1 border-instrument/30" />
-      <span className="text-xs font-medium text-mist">{label}</span>
-      <hr className="flex-1 border-instrument/30" />
+      <hr className="flex-1 border-border" />
+      <span className="text-xs font-medium uppercase tracking-wider text-ink-muted">
+        {label}
+      </span>
+      <hr className="flex-1 border-border" />
     </div>
   );
 }

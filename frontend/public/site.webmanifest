@@ -1,0 +1,10 @@
+{
+  "name": "Orbit",
+  "short_name": "Orbit",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ],
+  "theme_color": "#f5f7fa",
+  "background_color": "#f5f7fa",
+  "display": "standalone"
+}

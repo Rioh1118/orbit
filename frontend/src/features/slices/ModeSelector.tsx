@@ -44,14 +44,14 @@ export function ModeSelector({ disabled }: Props) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <label htmlFor="slice-task" className="text-xs font-medium text-mist">
+          <label htmlFor="slice-task" className="text-xs font-medium text-ink-muted">
             タスク
           </label>
           <select
             id="slice-task"
             value={taskId}
             onChange={(e) => setTaskId(e.target.value)}
-            className="rounded border border-instrument/40 bg-surface px-2 py-1 text-sm text-parchment"
+            className="rounded-md border border-border-strong bg-surface px-2 py-1 text-sm text-ink outline-none focus:border-primary"
           >
             <option value="">— なし —</option>
             {tasksResp?.data.map((t) => (
@@ -62,7 +62,7 @@ export function ModeSelector({ disabled }: Props) {
           </select>
         </div>
         <div className="flex items-center gap-1">
-          <span id="driver-label" className="text-xs font-medium text-mist">
+          <span id="driver-label" className="text-xs font-medium text-ink-muted">
             ドライバー
           </span>
           {/* single-select → radiogroup/radio + aria-checked (review H2 / SC 4.1.2) */}
@@ -78,10 +78,10 @@ export function ModeSelector({ disabled }: Props) {
                 role="radio"
                 aria-checked={driver === d.value}
                 onClick={() => setDriver(d.value)}
-                className={`rounded border px-2 py-1 text-xs ${
+                className={`min-h-6 rounded-md border px-2 py-1 text-xs transition-colors ${
                   driver === d.value
-                    ? "border-instrument bg-elevated text-parchment"
-                    : "border-instrument/30 bg-surface text-mist hover:text-parchment"
+                    ? "border-primary bg-primary/10 text-ink"
+                    : "border-border bg-surface text-ink-muted hover:text-ink"
                 }`}
               >
                 {d.label}
@@ -97,11 +97,11 @@ export function ModeSelector({ disabled }: Props) {
               type="button"
               onClick={() => startMode(m.value)}
               disabled={disabled || start.isPending}
-              className="flex w-full items-center gap-2 rounded border border-instrument/40 bg-surface px-3 py-2 text-left text-sm text-parchment hover:border-instrument disabled:opacity-50"
+              className="flex min-h-[44px] w-full items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm text-ink transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={`${m.label} を開始`}
             >
               <KeyCap k={m.key} size="sm" />
-              <span className="text-xs text-mist">{m.label}</span>
+              <span className="text-xs text-ink-muted">{m.label}</span>
             </button>
           </li>
         ))}

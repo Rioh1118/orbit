@@ -21,7 +21,7 @@ export function CategoryTabs({ value, onChange }: CategoryTabsProps) {
     <div
       role="radiogroup"
       aria-label="カテゴリ"
-      className="flex flex-wrap gap-1 border-b border-instrument/30"
+      className="flex flex-wrap gap-1 border-b border-border"
     >
       {CATEGORIES.map((c) => {
         const active = c.value === value;
@@ -32,10 +32,10 @@ export function CategoryTabs({ value, onChange }: CategoryTabsProps) {
             role="radio"
             aria-checked={active}
             onClick={() => onChange(c.value)}
-            className={`px-3 py-2 text-sm transition-colors ${
+            className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
               active
-                ? "-mb-px border-b-2 border-parchment text-parchment"
-                : "text-mist hover:text-parchment"
+                ? "border-primary text-ink"
+                : "border-transparent text-ink-muted hover:text-ink"
             }`}
           >
             {c.label}

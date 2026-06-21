@@ -26,7 +26,7 @@ export function ActiveSliceCard() {
   const startOff = useStartOff();
   const now = useNow();
 
-  if (isLoading) return <p className="text-sm text-mist">読み込み中…</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">読み込み中…</p>;
 
   let state: HeroState;
   if (!current) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { KeyCap } from "@/components/ui/KeyCap";
 import { ErrorText } from "@/components/ui/ErrorText";
 import { useCurrentSlice } from "@/features/slices/hooks";
@@ -91,17 +92,17 @@ export function FrictionModal({ open, onClose }: Props) {
         if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
       aria-labelledby="friction-modal-title"
-      className="m-auto max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-md border border-instrument/40 bg-surface p-0 text-parchment backdrop:bg-canvas/70"
+      className="m-auto max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-lg border border-border bg-surface p-0 text-ink shadow-lg motion-safe:animate-[moveInBottom_300ms_ease-out]"
     >
       <form onSubmit={handleSubmit} className="space-y-4 p-5">
         <header className="flex items-baseline justify-between gap-3">
           <h2
             id="friction-modal-title"
-            className="text-sm font-medium text-parchment"
+            className="text-sm font-medium text-ink"
           >
             詰まりを記録
           </h2>
-          <span className="text-xs text-mist">
+          <span className="text-xs text-ink-muted">
             esc で閉じる · alt+1-9,0,a でタグ
           </span>
         </header>
@@ -114,14 +115,14 @@ export function FrictionModal({ open, onClose }: Props) {
           rows={3}
           maxLength={2000}
           required
-          className="w-full rounded border border-instrument/40 bg-canvas px-3 py-2 text-sm text-parchment focus:border-instrument"
+          className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-primary"
           aria-label="詰まりの内容"
         />
 
         <fieldset className="space-y-2">
           <legend
             id="friction-tag-label"
-            className="text-sm font-medium text-mist"
+            className="text-sm font-medium text-ink-muted"
           >
             パターンタグ
           </legend>
@@ -140,10 +141,10 @@ export function FrictionModal({ open, onClose }: Props) {
                   role="radio"
                   aria-checked={active}
                   onClick={() => setTag(p.value)}
-                  className={`flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm transition-colors hover:border-instrument ${
+                  className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-sm transition-colors ${
                     active
-                      ? "border-instrument bg-elevated text-parchment"
-                      : "border-instrument/30 bg-canvas text-parchment-muted"
+                      ? "border-primary bg-primary/10 text-ink"
+                      : "border-border bg-surface text-ink-muted hover:border-border-strong"
                   }`}
                 >
                   <KeyCap k={p.key} size="sm" />
@@ -152,30 +153,32 @@ export function FrictionModal({ open, onClose }: Props) {
               );
             })}
           </div>
-          {!tag && <p className="text-xs text-mist">タグを選択してください。</p>}
+          {!tag && (
+            <p className="text-xs text-ink-muted">タグを選択してください。</p>
+          )}
         </fieldset>
 
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-mist">
+          <p className="text-xs text-ink-muted">
             {activeSlice
               ? `現在の区間に紐付け (${activeSlice.mode || activeSlice.off_reason})`
               : "現在の区間なし — 紐付けなしで記録"}
           </p>
           <div className="flex gap-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => dialogRef.current?.close()}
-              className="rounded px-3 py-1 text-sm text-mist transition-colors hover:text-parchment"
             >
               キャンセル
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="primary"
               disabled={!tag || !description.trim() || create.isPending}
-              className="rounded border border-instrument bg-elevated px-3 py-1 text-sm text-parchment disabled:opacity-50"
             >
               {create.isPending ? "保存中…" : "記録"}
-            </button>
+            </Button>
           </div>
         </div>
 
