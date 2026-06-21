@@ -19,10 +19,10 @@ export function ModeBar({ slices }: ModeBarProps) {
   return (
     <ul className="space-y-2">
       {sorted.map((s) => (
-        <li key={s.modeKey} className="flex items-center gap-3 text-sm">
+        <li key={s.modeKey} className="flex items-center gap-2 text-sm sm:gap-3">
           <KeyCap k={s.modeKey} size="sm" />
-          <span className="w-24 text-ink-muted">{s.label}</span>
-          <div className="relative h-1.5 flex-1 overflow-hidden rounded-sm bg-ink/5">
+          <span className="w-16 shrink-0 truncate text-ink-muted sm:w-24">{s.label}</span>
+          <div className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-sm bg-ink/5">
             <div
               className="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
               style={{
@@ -32,7 +32,7 @@ export function ModeBar({ slices }: ModeBarProps) {
               }}
             />
           </div>
-          <span className="w-10 text-right font-mono text-xs text-ink-muted">
+          <span className="w-10 shrink-0 text-right font-mono text-xs text-ink-muted">
             {s.pct}%
           </span>
         </li>

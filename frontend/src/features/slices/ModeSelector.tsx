@@ -97,7 +97,7 @@ export function ModeSelector({ disabled }: Props) {
               type="button"
               onClick={() => startMode(m.value)}
               disabled={disabled || start.isPending}
-              className="flex w-full items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm text-ink transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex min-h-[44px] w-full items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm text-ink transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={`${m.label} を開始`}
             >
               <KeyCap k={m.key} size="sm" />
