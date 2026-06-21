@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from "react";
+import { forwardRef, type InputHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   id: string;
@@ -12,12 +12,19 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  * `peer-focus:` reach the label; the label must NOT wrap the input. An empty
  * `placeholder=" "` keeps `:placeholder-shown` truthy while empty without showing
  * placeholder text, so the label rests over the field and lifts on focus/content.
+ *
+ * forwardRef lets callers focus the field (e.g. the edit dialog focuses the title
+ * on open) — PR A follow-up.
  */
-export function Input({ id, label, error, className, ...props }: InputProps) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { id, label, error, className, ...props },
+  ref,
+) {
   return (
     <div className="relative pt-6">
       <input
         {...props}
+        ref={ref}
         id={id}
         aria-invalid={error ? true : undefined}
         // placeholder=" " is the floating-label sentinel and must win over any caller
@@ -38,4 +45,4 @@ export function Input({ id, label, error, className, ...props }: InputProps) {
       )}
     </div>
   );
-}
+});
