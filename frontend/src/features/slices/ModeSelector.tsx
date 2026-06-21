@@ -78,7 +78,7 @@ export function ModeSelector({ disabled }: Props) {
                 role="radio"
                 aria-checked={driver === d.value}
                 onClick={() => setDriver(d.value)}
-                className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                className={`min-h-6 rounded-md border px-2 py-1 text-xs transition-colors ${
                   driver === d.value
                     ? "border-primary bg-primary/10 text-ink"
                     : "border-border bg-surface text-ink-muted hover:text-ink"
