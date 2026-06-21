@@ -229,6 +229,10 @@ Task メモ / Friction 説明 / Slice notes など長文ブロックには次を
 - **罫線で区切る箇所を増やす** — 影だけに頼らず `border-border` を細く入れて「帳簿の罫」感を作る。
 - **NavLink active を下線で示す** — Stage 2 は色のみ。下線スライドインで「今ここ」を強化。
 
+> **レスポンシブは独立 PR (PR D, §10.6) として扱う** — 本リブランド (PR A) はレイアウト構造を据え置き、
+> メディアクエリを使った意図的なレスポンシブ設計パスは別 PR に切り出す。PR A 時点の responsive は
+> Stage 2 由来の Tailwind `sm:`/`lg:` 6 箇所のみ。
+
 ### 5.2 Spacing Scale — **規約**
 
 Ledger 世界観の「白い余白」を担保しつつ業務 UI のスクロール量を抑える**中庸スケール**を採用。
@@ -879,6 +883,34 @@ chore(a11y): verify WCAG AA on new palette and tune tokens
 - 新規ロジックは testing.md (80% / TDD) に従いユニットテストを同梱。
 - PR 本文に Before/After スクショ必須。PR A は WCAG 実測値も貼付 (§14)。
 
+### 10.6 PR D — レスポンシブ対応 (別 feat, 視覚 + レイアウト)
+
+> **背景**: PR A〜C はレイアウト構造を Stage 2 から据え置く (§5.1)。レスポンシブは Stage 2 由来の Tailwind
+> `sm:`/`lg:` 6 箇所のみで、**意図的なレスポンシブ設計パスは未実施**(`md:` 不使用、カスタムブレークポイント
+> 無し、直書き `@media` は `prefers-reduced-motion` のみ)。これを独立 PR D で扱う。
+
+**PR A 時点の responsive 在庫**: `sm:px-8` (App) / `sm:grid-cols-3` (Today StatTile) / `sm:grid-cols-2`
+(ThenVsNow StatTile) / `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4` (ModeSelector) / `sm:grid-cols-3`
+(FrictionModal タグ)。ブレークポイント = Tailwind デフォルト (sm 640 / md 768 / lg 1024 / xl 1280)。
+
+**スコープ / 既知の弱点**:
+
+| # | 箇所 | 狭幅 (〜480px) の問題 | 対応方針 |
+|---|---|---|---|
+| 1 | ヘッダー / ナビ | logo + 3 NavLink が `flex-wrap` 折返しのみ | モバイルで 1 段化 / コンパクト化、tap 余白確保 |
+| 2 | TaskList 行 | title + category + select×2 + 削除 が 1 行 → 狭幅で潰れる | 狭幅で縦積み。**§7.12 (PR B) の行再設計と統合するのが理想** |
+| 3 | ModeBar | `w-24` ラベル + バー + `w-10` % の固定幅 | 狭幅でラベル幅縮小 / 折返し |
+| 4 | StatusHero | タイマー `text-2xl` + 横並びが狭幅で窮屈 | 狭幅でタイマーを下段へ |
+| 5 | Today / ThenVsNow グリッド | `sm:` のみで md/lg 帯が未調整 | md/lg のカラム数を見直し |
+| 6 | タッチ標的 | mobile 44px (SC 2.5.5 / 2.5.8) 未監査 | 主要操作を 44px 以上に |
+
+**規約**:
+- モバイルファースト (base = 最小幅、`sm:`/`md:`/`lg:` で拡張)。ブレークポイントは Tailwind デフォルト (独自定義しない、YAGNI)。
+- レイアウト変更を伴うため **PR A の純ビジュアル方針から独立**。**PR B/C のレイアウト再設計と競合しうるため、原則 B/C のマージ後に着手**(再設計後の Tasks 行 / チャートを responsive 化する方が二度手間にならない)。ヘッダー等のシェルだけ先行する場合は A の上で可。
+- 実機幅 360 / 390 / 768 / 1024 / 1280 で 3 ページ巡回。body 横スクロールを出さない。
+
+**見積**: 実装 2〜3h + 実機巡回 1h。
+
 ---
 
 ## 11. Risks
@@ -946,6 +978,7 @@ chore(a11y): verify WCAG AA on new palette and tune tokens
 | 2026-06-21 (改) | **§5.3「70% 圧縮が原則」を撤回、マッピング表が唯一の正** | 実比率は 50-80% でバラバラ。単一比率での機械的導出は誤り (§5.3) |
 | 2026-06-21 (改) | **挙動変更 (PR B/C) は testing.md 準拠でユニットテスト同梱** | 状態遷移/URL同期/ナラティブ生成は手動巡回でなくテストで守る (§10.3-10.5/§14) |
 | 2026-06-21 (改) | **スタイルは3層 (Tailwind / globals.css 素 CSS / CSS Modules opt-in)。全面 SCSS 化は不採用** | Tailwind 表現力不足は誤診 (書けない物は元々 globals.css 行き)。per-component CSS はトークン規律喪失・二重体系・bundle 増を招く。Tier 3 は PR A で実証してから (§7.0) |
+| 2026-06-21 (改) | **レスポンシブ対応を独立 PR D として切り出す (§10.6 / §14.5)** | PR A は構造据え置き (§5.1)、responsive は Stage 2 由来の `sm:`/`lg:` 6 箇所のみで意図的パス未実施。レイアウト変更を伴い PR B/C と競合しうるため分離、原則 B/C 後に着手 |
 
 ---
 
@@ -992,3 +1025,10 @@ chore(a11y): verify WCAG AA on new palette and tune tokens
 
 - [ ] PR A → B → C の順でマージ済、各層で中間状態の色混在がない
 - [ ] `feat/rebrand-front-design` → `main` のマージ PR で全 Acceptance を最終確認
+
+### 14.5 PR D — レスポンシブ対応
+
+- [ ] 360 / 390 / 768 / 1024 / 1280px で 3 ページを巡回、body の横スクロールが出ない
+- [ ] ヘッダーナビ / TaskList 行 / ModeBar / StatusHero が狭幅で潰れない (§10.6 弱点表 1-5)
+- [ ] 主要タッチ標的が 44px 以上 (SC 2.5.5 / 2.5.8)
+- [ ] `tsc --noEmit` / `pnpm build` グリーン + 各幅のスクショ添付
