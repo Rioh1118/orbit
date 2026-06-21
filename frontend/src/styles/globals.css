@@ -1,20 +1,33 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Stage 3 "Clean Ledger" tokens (light). Values WCAG-measured in A-0:
+   - border-strong #76879c → 3.42:1 on canvas (brief proposed #c9d2dc = 1.42:1, failed 1.4.11)
+   - friction      #cb7016 → 3.33:1 on canvas (brief proposed #d4791a = 2.99:1, just failed)
+   - accent        #00a368 → 3.26:1 on white: non-text ONLY (text would need 4.5:1)
+   Names are semantic so a future theme can swap values without touching components.
+   ============================================================ */
 :root {
-  --color-canvas: #213448;
-  --color-surface: #283e54;
-  --color-elevated: #2f4760;
-  --color-instrument: #547792;
-  --color-mist: #94b4c1;
-  --color-parchment: #eae0cf;
-  --color-parchment-muted: #c9c0ad;
-  --color-growth: #7fb28e;
-  --color-friction: #d4a574;
-  --color-danger: #b66b6b;
+  --color-canvas: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-elevated: #ffffff;
+  --color-border: #e3e8ef;
+  --color-border-strong: #76879c;
+  --color-ink: #0b1d35;
+  --color-ink-muted: #5a6b80;
+  --color-primary: #0d3b66;
+  --color-primary-hover: #0a2d4f;
+  --color-accent: #00a368;
+  --color-friction: #cb7016;
+  --color-danger: #c0392b;
+
+  --shadow-sm: 0 1px 2px rgba(11, 29, 53, 0.06);
+  --shadow-md: 0 8px 24px rgba(11, 29, 53, 0.08);
+  --shadow-lg: 0 16px 40px rgba(11, 29, 53, 0.12);
 }
 
 html,
@@ -25,23 +38,122 @@ body,
 
 body {
   background-color: var(--color-canvas);
-  color: var(--color-parchment);
+  color: var(--color-ink);
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 @layer base {
-  /* Visible keyboard focus on every interactive element (WCAG 2.4.7 Focus Visible /
-     1.4.11 Non-text Contrast). mist gives 5.79:1 on canvas — well above the 3:1 floor;
-     instrument would fail at 2.69:1. :where() keeps specificity 0 so a component can
-     still opt out deliberately. */
+  /* Visible keyboard focus on every interactive element (WCAG 2.4.7 / 1.4.11).
+     primary (#0d3b66) = 10.67:1 on canvas, robust on both canvas and surface — far
+     above the 3:1 floor. border-strong is reserved for resting functional borders
+     (inputs / KeyCap), not focus. Focus never uses transform, so the element does
+     not shift on focus (brief §9.2). :where() keeps specificity 0 for opt-out. */
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-    outline: 2px solid var(--color-mist);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 }
 
+/* ---- Motion vocabulary (brief §6). Pixel travel is pinned: the Natours sample
+   assumes a 62.5% root (1rem = 10px) while Orbit uses Tailwind's 16px root, so
+   copying the sample's rem values verbatim would inflate travel ~1.6x. ---- */
+@keyframes moveInBottom {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0);
+  }
+}
+
+@keyframes moveInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0);
+  }
+}
+
+@keyframes moveInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  80% {
+    transform: translateX(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Long-form reading rhythm for Task notes / Friction descriptions (brief §4.4). */
+.prose-ledger {
+  max-width: 65ch;
+  line-height: 1.65;
+  letter-spacing: 0;
+}
+
+.prose-ledger > * + * {
+  margin-top: 0.75em;
+}
+
+/* Modal scrim: ink (navy), not black, to stay inside the Ledger world (brief §8).
+   Fallback is a denser opaque navy where backdrop-filter is unsupported. */
+dialog::backdrop {
+  background: rgba(11, 29, 53, 0.48);
+}
+
+@supports (backdrop-filter: blur(8px)) {
+  dialog::backdrop {
+    background: rgba(11, 29, 53, 0.32);
+    backdrop-filter: blur(8px);
+  }
+}
+
 ::selection {
-  background: var(--color-instrument);
-  color: var(--color-parchment);
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+/* Honour reduced-motion: kill keyframe animation, collapse transitions (brief §6.3). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

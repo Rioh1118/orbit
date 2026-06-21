@@ -8,13 +8,19 @@ export default {
         canvas: "var(--color-canvas)",
         surface: "var(--color-surface)",
         elevated: "var(--color-elevated)",
-        instrument: "var(--color-instrument)",
-        mist: "var(--color-mist)",
-        parchment: {
-          DEFAULT: "var(--color-parchment)",
-          muted: "var(--color-parchment-muted)",
+        border: {
+          DEFAULT: "var(--color-border)",
+          strong: "var(--color-border-strong)",
         },
-        growth: "var(--color-growth)",
+        ink: {
+          DEFAULT: "var(--color-ink)",
+          muted: "var(--color-ink-muted)",
+        },
+        primary: {
+          DEFAULT: "var(--color-primary)",
+          hover: "var(--color-primary-hover)",
+        },
+        accent: "var(--color-accent)",
         friction: "var(--color-friction)",
         danger: "var(--color-danger)",
       },
@@ -37,7 +43,9 @@ export default {
         lg: "6px",
       },
       boxShadow: {
-        instrument: "inset 0 1px 0 0 rgb(148 180 193 / 0.08)",
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
       },
     },
   },
