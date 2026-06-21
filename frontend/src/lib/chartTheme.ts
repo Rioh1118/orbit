@@ -36,3 +36,9 @@ export const modeColors: Record<SliceMode, string> = {
   consult: "#8b6f9c",
   other: "#9aa7b8",
 };
+
+// Donut/swatch colour for a mode key. Unknown keys — including the grouped
+// "その他" bucket (REST_KEY) — fall back to the neutral slate so they read as "other".
+export function sliceColor(key: string): string {
+  return modeColors[key as SliceMode] ?? "#9aa7b8";
+}
