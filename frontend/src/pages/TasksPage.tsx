@@ -3,13 +3,13 @@ import { TaskList } from "@/features/tasks/TaskList";
 
 export default function TasksPage() {
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-12">
       <section>
-        <h2 className="mb-3 text-lg font-medium">新規タスク</h2>
+        <h2 className="mb-3 text-xl font-normal text-ink">新規タスク</h2>
         <TaskForm />
       </section>
       <section>
-        <h2 className="mb-3 text-lg font-medium">タスク一覧</h2>
+        <h2 className="mb-3 text-xl font-normal text-ink">タスク一覧</h2>
         <TaskList />
       </section>
     </div>

@@ -1,6 +1,11 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { useCreateTask } from "./hooks";
 import { TASK_CATEGORIES, type TaskCategory } from "./types";
+
+const fieldClass =
+  "w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-primary";
 
 export function TaskForm() {
   const [title, setTitle] = useState("");
@@ -21,7 +26,7 @@ export function TaskForm() {
         setTitle("");
         setDescription("");
       }}
-      className="space-y-2"
+      className="space-y-3"
     >
       <input
         value={title}
@@ -29,7 +34,7 @@ export function TaskForm() {
         placeholder="タスクのタイトル"
         required
         maxLength={200}
-        className="w-full rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+        className={fieldClass}
         aria-label="タイトル"
       />
       <textarea
@@ -38,18 +43,18 @@ export function TaskForm() {
         placeholder="説明 (任意)"
         rows={2}
         maxLength={5000}
-        className="w-full rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+        className={fieldClass}
         aria-label="説明"
       />
       <div className="flex items-center gap-2">
-        <label htmlFor="task-category" className="text-xs text-neutral-400">
+        <label htmlFor="task-category" className="text-xs text-ink-muted">
           カテゴリ
         </label>
         <select
           id="task-category"
           value={category}
           onChange={(e) => setCategory(e.target.value as TaskCategory)}
-          className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm"
+          className="rounded-md border border-border-strong bg-surface px-2 py-1 text-sm text-ink outline-none focus:border-primary"
         >
           {TASK_CATEGORIES.map((c) => (
             <option key={c.value} value={c.value}>
@@ -58,18 +63,14 @@ export function TaskForm() {
           ))}
         </select>
       </div>
-      <button
+      <Button
         type="submit"
+        variant="primary"
         disabled={create.isPending || !title.trim()}
-        className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium hover:bg-blue-500 disabled:bg-neutral-700"
       >
         {create.isPending ? "作成中..." : "タスク作成"}
-      </button>
-      {create.error && (
-        <p className="text-xs text-red-400">
-          {(create.error as Error).message}
-        </p>
-      )}
+      </Button>
+      {create.error && <ErrorText>{(create.error as Error).message}</ErrorText>}
     </form>
   );
 }
