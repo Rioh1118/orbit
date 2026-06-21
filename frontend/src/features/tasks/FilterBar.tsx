@@ -19,8 +19,8 @@ interface FilterBarProps {
 
 /**
  * Status + category filter bar (brief §7.12.5). Status is a group of toggle buttons
- * (aria-pressed conveys the active filter); category is a single select. The chosen
- * filter is mirrored to the URL by the parent's useTaskFilters hook.
+ * (aria-pressed conveys the active filter); category is a select with a visible
+ * label. The chosen filter is mirrored to the URL by the parent's useTaskFilters hook.
  */
 export function FilterBar({ filter, onStatusChange, onCategoryChange }: FilterBarProps) {
   return (
@@ -45,19 +45,22 @@ export function FilterBar({ filter, onStatusChange, onCategoryChange }: FilterBa
           );
         })}
       </div>
-      <select
-        value={filter.category}
-        onChange={(e) => onCategoryChange(e.target.value as CategoryFilter)}
-        aria-label="カテゴリで絞り込み"
-        className="rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm text-ink outline-none focus:border-primary"
-      >
-        <option value="all">すべてのカテゴリ</option>
-        {TASK_CATEGORIES.map((c) => (
-          <option key={c.value} value={c.value}>
-            {c.label}
-          </option>
-        ))}
-      </select>
+      <label htmlFor="task-category-filter" className="flex items-center gap-2 text-sm text-ink-muted">
+        カテゴリ
+        <select
+          id="task-category-filter"
+          value={filter.category}
+          onChange={(e) => onCategoryChange(e.target.value as CategoryFilter)}
+          className="rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm text-ink outline-none focus:border-primary"
+        >
+          <option value="all">すべて</option>
+          {TASK_CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }

@@ -38,10 +38,15 @@ function EmptyState({ hasAnyTasks, onClearFilter }: EmptyStateProps) {
   );
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "不明なエラーが発生しました";
+}
+
 export function TaskList() {
   const { data, isLoading, error } = useTasks();
   const { filter, setStatus, setCategory, clear } = useTaskFilters();
-  const update = useUpdateTask();
+  const update = useUpdateTask(); // row-level promote / category / menu transitions
+  const editUpdate = useUpdateTask(); // edit dialog (separate so its errors stay in the dialog)
   const remove = useDeleteTask();
   const create = useCreateTask();
 
@@ -51,7 +56,7 @@ export function TaskList() {
   const [createCategory, setCreateCategory] = useState<TaskCategory>("new_feature");
 
   if (isLoading) return <p className="text-sm text-ink-muted">読み込み中...</p>;
-  if (error) return <ErrorText>{(error as Error).message}</ErrorText>;
+  if (error) return <ErrorText>{errorMessage(error)}</ErrorText>;
 
   const allTasks = data?.data ?? [];
   const visible = filterTasks(allTasks, filter);
@@ -69,6 +74,10 @@ export function TaskList() {
   return (
     <div className="space-y-4">
       <FilterBar filter={filter} onStatusChange={setStatus} onCategoryChange={setCategory} />
+
+      {/* Optimistic row mutations roll back silently on failure; surface the reason. */}
+      {update.error && <ErrorText>更新に失敗しました: {errorMessage(update.error)}</ErrorText>}
+      {remove.error && <ErrorText>削除に失敗しました: {errorMessage(remove.error)}</ErrorText>}
 
       {visible.length === 0 ? (
         <EmptyState hasAnyTasks={allTasks.length > 0} onClearFilter={clear} />
@@ -90,33 +99,27 @@ export function TaskList() {
         category={createCategory}
         onCategoryChange={setCreateCategory}
         isPending={create.isPending}
+        createError={create.error ? errorMessage(create.error) : undefined}
         autoFocus={allTasks.length === 0}
         onCreate={async ({ title, category }) => {
           await create.mutateAsync({ title, category });
         }}
       />
-      {create.error && <ErrorText>{(create.error as Error).message}</ErrorText>}
 
       {editing && (
         <EditTaskDialog
           open
           task={editing}
           onClose={() => setEditing(null)}
-          onSave={(input) => {
-            update.mutate({ id: editing.id, input });
-            setEditing(null);
-          }}
+          onSave={(input) => editUpdate.mutateAsync({ id: editing.id, input }).then(() => undefined)}
         />
       )}
       {deleting && (
         <DeleteTaskDialog
           open
           taskTitle={deleting.title}
-          onCancel={() => setDeleting(null)}
-          onConfirm={() => {
-            remove.mutate(deleting.id);
-            setDeleting(null);
-          }}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => remove.mutate(deleting.id)}
         />
       )}
     </div>

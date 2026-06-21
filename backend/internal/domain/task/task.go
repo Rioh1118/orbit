@@ -100,14 +100,16 @@ func NextLifecycle(newStatus Status, started, completed *time.Time, now time.Tim
 	switch newStatus {
 	case StatusInProgress:
 		if started == nil {
-			started = &now
+			t := now // copy so the result never aliases the caller's `now`
+			started = &t
 		}
 		completed = nil
 	case StatusOpen:
 		completed = nil
 	case StatusDone:
 		if completed == nil {
-			completed = &now
+			t := now
+			completed = &t
 		}
 	}
 	return started, completed

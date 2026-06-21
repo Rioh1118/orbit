@@ -95,20 +95,22 @@ func (s *TaskService) Update(ctx context.Context, in UpdateInput) (*task.Task, e
 	if err != nil {
 		return nil, err
 	}
+	// Work on a copy so we never mutate the value returned by the repo (immutability).
+	updated := *existing
 	if in.Title != nil {
-		existing.Title = *in.Title
+		updated.Title = *in.Title
 	}
 	if in.Description != nil {
-		existing.Description = *in.Description
+		updated.Description = *in.Description
 	}
 	if in.ExternalRef != nil {
-		existing.ExternalRef = *in.ExternalRef
+		updated.ExternalRef = *in.ExternalRef
 	}
 	if in.Category != nil {
 		if !in.Category.Valid() {
 			return nil, task.ErrInvalidCategory
 		}
-		existing.Category = *in.Category
+		updated.Category = *in.Category
 	}
 	if in.Status != nil {
 		if !in.Status.Valid() {
@@ -116,15 +118,15 @@ func (s *TaskService) Update(ctx context.Context, in UpdateInput) (*task.Task, e
 		}
 		// Lifecycle stamps follow the ADR-005 state machine (see task.NextLifecycle):
 		// start stamps started_at, completion stamps completed_at, reopening clears it.
-		existing.StartedAt, existing.CompletedAt = task.NextLifecycle(
+		updated.StartedAt, updated.CompletedAt = task.NextLifecycle(
 			*in.Status, existing.StartedAt, existing.CompletedAt, time.Now().UTC(),
 		)
-		existing.Status = *in.Status
+		updated.Status = *in.Status
 	}
-	if err := existing.Validate(); err != nil {
+	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
-	return s.repo.Update(ctx, existing)
+	return s.repo.Update(ctx, &updated)
 }
 
 func (s *TaskService) Delete(ctx context.Context, id, userID uuid.UUID) error {

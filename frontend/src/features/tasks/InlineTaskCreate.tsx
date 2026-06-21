@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useRef, useState } from "react";
+import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { ErrorText } from "@/components/ui/ErrorText";
 import { CategoryMenu } from "./CategoryMenu";
 import { validateTaskTitle } from "./validation";
@@ -9,25 +9,29 @@ interface InlineTaskCreateProps {
   onCategoryChange: (category: TaskCategory) => void;
   onCreate: (input: { title: string; category: TaskCategory }) => Promise<void>;
   isPending: boolean;
+  /** Server-side create error, surfaced here so the contract is explicit (not implicit). */
+  createError?: string;
   autoFocus?: boolean;
 }
 
 /**
  * Row-end inline creation (brief §7.12.4, Linear/Todoist style): Enter creates and
  * refocuses the field for continuous entry, Esc clears, an empty title shows an
- * inline error (never silent), and the category persists across creates (lifted to
- * the parent so the last-used category is the default).
+ * inline error (wired via aria-describedby, never silent), and the category persists
+ * across creates (lifted to the parent so the last-used category is the default).
  */
 export function InlineTaskCreate({
   category,
   onCategoryChange,
   onCreate,
   isPending,
+  createError,
   autoFocus,
 }: InlineTaskCreateProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const errorId = useId();
 
   async function commit() {
     const result = validateTaskTitle(title);
@@ -41,8 +45,8 @@ export function InlineTaskCreate({
       setTitle("");
       inputRef.current?.focus();
     } catch {
-      // The mutation error is surfaced by the parent (create.error); keep the typed
-      // title so the user can retry without re-entering it.
+      // The server error is surfaced via the createError prop; keep the typed title
+      // so the user can retry without re-entering it.
     }
   }
 
@@ -77,6 +81,7 @@ export function InlineTaskCreate({
           autoFocus={autoFocus}
           aria-label="新しいタスクのタイトル"
           aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           className="min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-muted"
         />
         <CategoryMenu category={category} onChange={onCategoryChange} />
@@ -90,8 +95,13 @@ export function InlineTaskCreate({
         </button>
       </div>
       {error && (
-        <div className="mt-2">
+        <div id={errorId} className="mt-2">
           <ErrorText>{error}</ErrorText>
+        </div>
+      )}
+      {createError && (
+        <div className="mt-2">
+          <ErrorText>{createError}</ErrorText>
         </div>
       )}
     </div>

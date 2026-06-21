@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { Input } from "@/components/ui/Input";
 import { Radio } from "@/components/ui/Radio";
 import { validateTaskTitle } from "./validation";
@@ -14,22 +15,28 @@ export interface EditTaskInput {
 interface EditTaskDialogProps {
   open: boolean;
   task: Task;
-  onSave: (input: EditTaskInput) => void;
+  /** Persists the edit; rejects on failure (the dialog shows the error and stays open). */
+  onSave: (input: EditTaskInput) => Promise<void>;
   onClose: () => void;
 }
 
 /**
  * Native `<dialog>` task editor (brief §7.12.3): title (floating Input), description
  * (textarea with a visible label) and category (Radio group). Fields seed from the
- * task on open; empty title shows an inline error rather than failing silently.
+ * task on open; an empty title shows an inline field error, and a failed save shows
+ * an inline error and keeps the dialog open (no silent failure). Close path mirrors
+ * FrictionModal (onClose + backdrop click + native Esc).
  */
 export function EditTaskDialog({ open, task, onSave, onClose }: EditTaskDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const headingId = useId();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [category, setCategory] = useState<TaskCategory>(task.category);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const descId = useId();
 
   // Seed fields from the task whenever the dialog opens.
@@ -39,6 +46,8 @@ export function EditTaskDialog({ open, task, onSave, onClose }: EditTaskDialogPr
     setDescription(task.description);
     setCategory(task.category);
     setError(null);
+    setSaveError(null);
+    setSaving(false);
   }, [open, task]);
 
   useEffect(() => {
@@ -47,11 +56,12 @@ export function EditTaskDialog({ open, task, onSave, onClose }: EditTaskDialogPr
     if (open && !dlg.open) {
       dlg.showModal();
       titleRef.current?.focus();
+    } else if (!open && dlg.open) {
+      dlg.close();
     }
-    if (!open && dlg.open) dlg.close();
   }, [open]);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     const result = validateTaskTitle(title);
     if (!result.ok) {
@@ -59,22 +69,29 @@ export function EditTaskDialog({ open, task, onSave, onClose }: EditTaskDialogPr
       titleRef.current?.focus();
       return;
     }
-    onSave({ title: result.value, description: description.trim(), category });
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({ title: result.value, description: description.trim(), category });
+      ref.current?.close(); // success → onClose → parent unmounts
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "保存に失敗しました");
+      setSaving(false);
+    }
   }
 
   return (
     <dialog
       ref={ref}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
       onClose={onClose}
-      aria-labelledby="edit-dialog-title"
-      className="m-auto w-[min(92vw,32rem)] rounded-lg border border-border bg-surface p-6 text-ink shadow-lg motion-safe:animate-[moveInBottom_300ms_cubic-bezier(.16,1,.3,1)]"
+      onClick={(e) => {
+        if (e.target === ref.current) ref.current?.close();
+      }}
+      aria-labelledby={headingId}
+      className="m-auto w-[min(92vw,32rem)] rounded-lg border border-border bg-surface p-0 text-ink shadow-lg motion-safe:animate-[moveInBottom_300ms_cubic-bezier(.16,1,.3,1)]"
     >
-      <form onSubmit={submit} className="space-y-5">
-        <h2 id="edit-dialog-title" className="text-lg text-ink">
+      <form onSubmit={submit} className="space-y-5 p-6">
+        <h2 id={headingId} className="text-lg text-ink">
           タスクを編集
         </h2>
         <Input
@@ -114,12 +131,13 @@ export function EditTaskDialog({ open, task, onSave, onClose }: EditTaskDialogPr
             ))}
           </div>
         </fieldset>
+        {saveError && <ErrorText>{saveError}</ErrorText>}
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="subtle" onClick={onClose}>
+          <Button type="button" variant="subtle" onClick={() => ref.current?.close()}>
             キャンセル
           </Button>
-          <Button type="submit" variant="primary">
-            保存
+          <Button type="submit" variant="primary" disabled={saving}>
+            {saving ? "保存中…" : "保存"}
           </Button>
         </div>
       </form>

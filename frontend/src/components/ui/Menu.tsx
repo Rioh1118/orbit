@@ -45,7 +45,12 @@ export function Menu({ label, children, items, align = "end", triggerClassName =
   const menuId = useId();
 
   useEffect(() => {
-    if (open) itemRefs.current[activeIndex]?.focus();
+    if (open) {
+      itemRefs.current[activeIndex]?.focus();
+    } else {
+      // Drop refs from the previous open so a later, shorter item list can't keep stale slots.
+      itemRefs.current = [];
+    }
   }, [open, activeIndex]);
 
   useEffect(() => {

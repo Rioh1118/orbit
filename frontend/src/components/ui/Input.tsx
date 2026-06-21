@@ -1,4 +1,4 @@
-import { forwardRef, type InputHTMLAttributes } from "react";
+import { forwardRef, useId, type InputHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   id: string;
@@ -14,12 +14,14 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  * placeholder text, so the label rests over the field and lifts on focus/content.
  *
  * forwardRef lets callers focus the field (e.g. the edit dialog focuses the title
- * on open) — PR A follow-up.
+ * on open). The error is wired to the input via aria-describedby so a screen reader
+ * re-reads it on focus, not only when role="alert" first fires.
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { id, label, error, className, ...props },
   ref,
 ) {
+  const errorId = useId();
   return (
     <div className="relative pt-6">
       <input
@@ -27,6 +29,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         ref={ref}
         id={id}
         aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         // placeholder=" " is the floating-label sentinel and must win over any caller
         // placeholder in {...props}, so it is set AFTER the spread (review HIGH-2).
         placeholder=" "
@@ -39,7 +42,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         {label}
       </label>
       {error && (
-        <p role="alert" className="mt-1 text-sm text-danger">
+        <p id={errorId} role="alert" className="mt-1 text-sm text-danger">
           {error}
         </p>
       )}
