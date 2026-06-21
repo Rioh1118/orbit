@@ -17,11 +17,13 @@ export function Input({ id, label, error, className, ...props }: InputProps) {
   return (
     <div className="relative pt-6">
       <input
-        id={id}
-        placeholder=" "
-        aria-invalid={error ? true : undefined}
-        className={`peer block w-full border-b-2 border-border-strong bg-transparent pb-1 text-sm text-ink outline-none transition-colors placeholder:text-transparent focus:border-primary aria-[invalid=true]:border-danger ${className ?? ""}`}
         {...props}
+        id={id}
+        aria-invalid={error ? true : undefined}
+        // placeholder=" " is the floating-label sentinel and must win over any caller
+        // placeholder in {...props}, so it is set AFTER the spread (review HIGH-2).
+        placeholder=" "
+        className={`peer block w-full border-b-2 border-border-strong bg-transparent pb-1 text-sm text-ink outline-none transition-colors placeholder:text-transparent focus:border-primary aria-[invalid=true]:border-danger ${className ?? ""}`}
       />
       <label
         htmlFor={id}
