@@ -78,7 +78,7 @@ export function ModeSelector({ disabled }: Props) {
                 role="radio"
                 aria-checked={driver === d.value}
                 onClick={() => setDriver(d.value)}
-                className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                className={`min-h-6 rounded-md border px-2 py-1 text-xs transition-colors ${
                   driver === d.value
                     ? "border-primary bg-primary/10 text-ink"
                     : "border-border bg-surface text-ink-muted hover:text-ink"
@@ -97,7 +97,7 @@ export function ModeSelector({ disabled }: Props) {
               type="button"
               onClick={() => startMode(m.value)}
               disabled={disabled || start.isPending}
-              className="flex w-full items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm text-ink transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex min-h-[44px] w-full items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm text-ink transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={`${m.label} を開始`}
             >
               <KeyCap k={m.key} size="sm" />

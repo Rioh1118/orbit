@@ -5,8 +5,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
 }
 
+// min-h-[44px] keeps every CTA a comfortable touch target on coarse pointers
+// (brief §10.6 #6, SC 2.5.8) while staying fine on desktop.
 const base =
-  "relative isolate inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:transform-none disabled:shadow-none";
+  "relative isolate inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-4 py-2 text-sm transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:transform-none disabled:shadow-none";
 
 // Filled variants get the sample-style ::after glow: a same-colour layer behind the
 // button (hidden at rest) that expands and fades on hover. content-[''] is required

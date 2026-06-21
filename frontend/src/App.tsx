@@ -18,7 +18,7 @@ export default function App() {
       >
         本文へスキップ
       </a>
-      <header className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-border bg-surface px-4 py-4 sm:px-8">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-surface px-4 py-3 sm:gap-x-6 sm:px-8 sm:py-4">
         <Link
           to="/"
           className="font-semibold tracking-wide text-ink"
@@ -29,7 +29,7 @@ export default function App() {
           </span>
           orbit
         </Link>
-        <nav className="flex flex-wrap gap-x-5 gap-y-2">
+        <nav className="flex flex-wrap gap-x-4 gap-y-1 sm:gap-x-5">
           <NavLink to="/" end className={navItemClass}>
             today
           </NavLink>

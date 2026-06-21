@@ -81,7 +81,7 @@ export function StatusHero({ state, onEnd, onBreak, busy }: StatusHeroProps) {
         className={`absolute inset-y-0 left-0 w-1.5 transition-colors duration-200 ${view.bar}`}
       />
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         {/* role="status" implies aria-live="polite". Only the state phrase is announced —
             the elapsed clock is excluded so it doesn't re-announce on every 30s tick. */}
         <p role="status" className="flex items-center gap-2.5 text-lg text-ink">
