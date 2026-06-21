@@ -21,34 +21,40 @@ function Donut({ title, slices, totalMinutes }: DonutProps) {
   return (
     <div>
       <p className="mb-1 text-center text-xs font-medium text-ink-muted">{title}</p>
-      <div className="relative h-44 w-full" role="img" aria-label={`${title} のモード配分`}>
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={slices}
-              dataKey="minutes"
-              nameKey="label"
-              innerRadius="62%"
-              outerRadius="88%"
-              stroke="#ffffff"
-              strokeWidth={2}
-              isAnimationActive={false}
-            >
-              {slices.map((s) => (
-                <Cell key={s.key} fill={sliceColor(s.key)} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={chartTheme.tooltipStyle}
-              itemStyle={chartTheme.tooltipItemStyle}
-              formatter={(value: number | string, name) => [formatMinutes(Number(value)), name as string]}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="font-mono text-base text-ink">{formatMinutes(totalMinutes)}</span>
+      {slices.length === 0 ? (
+        <div className="flex h-44 w-full items-center justify-center text-sm text-ink-muted">
+          データなし
         </div>
-      </div>
+      ) : (
+        <div className="relative h-44 w-full" role="img" aria-label={`${title} のモード配分`}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={slices}
+                dataKey="minutes"
+                nameKey="label"
+                innerRadius="62%"
+                outerRadius="88%"
+                stroke="#ffffff"
+                strokeWidth={2}
+                isAnimationActive={false}
+              >
+                {slices.map((s) => (
+                  <Cell key={s.key} fill={sliceColor(s.key)} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={chartTheme.tooltipStyle}
+                itemStyle={chartTheme.tooltipItemStyle}
+                formatter={(value: number | string, name) => [formatMinutes(Number(value)), name as string]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="font-mono text-base text-ink">{formatMinutes(totalMinutes)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

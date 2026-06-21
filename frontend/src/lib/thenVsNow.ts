@@ -90,7 +90,11 @@ export interface ThenVsNowAnalysis {
   narrative: string;
 }
 
-/** Split rows into Then (earlier half) / Now (later half) by weeks-with-data. */
+/**
+ * Split rows into Then (earlier half) / Now (later half) by weeks-with-data.
+ * Assumes `week` is an ISO date string (YYYY-MM-DD) so a lexicographic sort is
+ * chronological — the only week format the reports API returns.
+ */
 export function splitWeeks(rows: ModeWeekRow[]): { thenRows: ModeWeekRow[]; nowRows: ModeWeekRow[] } {
   const weeks = Array.from(new Set(rows.map((r) => r.week))).sort();
   const mid = Math.floor(weeks.length / 2);
@@ -127,7 +131,9 @@ export function computeDeltas(then: SideAgg, now: SideAgg): ModeDelta[] {
     const deltaPp = Math.round((nowShare - thenShare) * 100);
     return { mode, thenShare, nowShare, deltaPp, improvement: isImprovement(mode, deltaPp) };
   });
-  deltas.sort((a, b) => Math.abs(b.deltaPp) - Math.abs(a.deltaPp));
+  // Tie-break by mode name so equal-magnitude deltas order deterministically
+  // (the narrative names deltas[0] / deltas[1]).
+  deltas.sort((a, b) => Math.abs(b.deltaPp) - Math.abs(a.deltaPp) || a.mode.localeCompare(b.mode));
   return deltas;
 }
 

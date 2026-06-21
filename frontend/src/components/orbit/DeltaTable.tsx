@@ -12,8 +12,8 @@ interface DeltaTableProps {
 /**
  * Then→Now share deltas per mode (brief §7.9). The ▲/▼ glyph is non-text (icon): it
  * is `accent` only on an improvement-direction significant change, otherwise neutral
- * ink-muted — regressions are never greened. The signed pp value carries the change in
- * text (not colour), and an sr-only "改善" marks improvements for screen readers.
+ * ink-muted — regressions are never greened. Direction is carried in text (the signed
+ * pp value) and an sr-only label, so it is never conveyed by colour alone (1.4.1).
  */
 export function DeltaTable({ deltas }: DeltaTableProps) {
   return (
@@ -37,8 +37,9 @@ export function DeltaTable({ deltas }: DeltaTableProps) {
       </thead>
       <tbody>
         {deltas.map((d) => {
-          const arrow = d.deltaPp > 0 ? "▲" : d.deltaPp < 0 ? "▼" : "―";
-          const sign = d.deltaPp > 0 ? "+" : d.deltaPp < 0 ? "-" : "";
+          const sign = d.deltaPp > 0 ? "+" : "-";
+          const srDirection =
+            d.deltaPp > 0 ? "増加" : d.deltaPp < 0 ? "減少" : "変化なし";
           return (
             <tr key={d.mode} className="border-b border-border/60">
               <td className="py-2 text-ink">
@@ -54,12 +55,25 @@ export function DeltaTable({ deltas }: DeltaTableProps) {
               <td className="py-2 text-right font-mono text-ink-muted">{pct(d.thenShare)}</td>
               <td className="py-2 text-right font-mono text-ink">{pct(d.nowShare)}</td>
               <td className="py-2 text-right font-mono text-ink-muted">
-                <span aria-hidden className={`mr-1 ${d.improvement ? "text-accent" : "text-ink-muted"}`}>
-                  {arrow}
+                {d.deltaPp === 0 ? (
+                  "±0pp"
+                ) : (
+                  <>
+                    <span
+                      aria-hidden
+                      className={`mr-1 ${d.improvement ? "text-accent" : "text-ink-muted"}`}
+                    >
+                      {d.deltaPp > 0 ? "▲" : "▼"}
+                    </span>
+                    {sign}
+                    {Math.abs(d.deltaPp)}pp
+                  </>
+                )}
+                <span className="sr-only">
+                  {" "}
+                  {srDirection}
+                  {d.improvement ? " 改善" : ""}
                 </span>
-                {sign}
-                {Math.abs(d.deltaPp)}pp
-                {d.improvement && <span className="sr-only"> 改善</span>}
               </td>
             </tr>
           );

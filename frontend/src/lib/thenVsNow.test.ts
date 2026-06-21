@@ -138,3 +138,26 @@ describe("topSlices — donut top-N + その他", () => {
     expect(slices.some((sl) => sl.key === "__rest__")).toBe(false);
   });
 });
+
+describe("edge cases", () => {
+  it("treats empty rows as insufficient data", () => {
+    const a = analyzeThenVsNow([]);
+    expect(a.hasEnough).toBe(false);
+    expect(a.narrative).toContain("十分なデータがありません");
+    expect(a.deltas).toEqual([]);
+  });
+
+  it("treats all-zero-duration rows as insufficient (the minute floor catches it)", () => {
+    const rows: ModeWeekRow[] = [
+      row("2026-05-04", "implement", 0),
+      row("2026-05-11", "implement", 0),
+      row("2026-05-18", "implement", 0),
+      row("2026-05-25", "implement", 0),
+    ];
+    expect(analyzeThenVsNow(rows).hasEnough).toBe(false);
+  });
+
+  it("buildNarrative on empty deltas (defensive) reports no meaningful change", () => {
+    expect(buildNarrative([], true)).toContain("大きな変化は見えていません");
+  });
+});

@@ -133,7 +133,11 @@ export default function ThenVsNowPage() {
             {completionSeries.length < MIN_WEEKS_FOR_TREND ? (
               <p className="mt-4 text-sm text-ink-muted">データ不足 — 完了タスクが足りません</p>
             ) : (
-              <div className="mt-4 h-24 w-full">
+              <div
+                className="mt-4 h-24 w-full"
+                role="img"
+                aria-label="タスクあたりの完了時間の週次推移（分）"
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={completionSeries}
