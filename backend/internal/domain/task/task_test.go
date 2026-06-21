@@ -2,6 +2,7 @@ package task
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -84,6 +85,55 @@ func TestTaskValidate(t *testing.T) {
 			err := c.task.Validate()
 			if err != c.wantErr {
 				t.Errorf("err = %v, want %v", err, c.wantErr)
+			}
+		})
+	}
+}
+
+func eqTimePtr(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Equal(*b)
+}
+
+// TestNextLifecycle pins the ADR-005 task state machine: how a status change moves
+// the started_at / completed_at lifecycle stamps. Pure given `now`.
+func TestNextLifecycle(t *testing.T) {
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	earlier := time.Date(2026, 6, 1, 9, 0, 0, 0, time.UTC)
+	pt := func(t time.Time) *time.Time { return &t } // fresh pointer per case (no shared input)
+
+	cases := []struct {
+		name          string
+		newStatus     Status
+		started       *time.Time
+		completed     *time.Time
+		wantStarted   *time.Time
+		wantCompleted *time.Time
+	}{
+		{"open->in_progress stamps started_at", StatusInProgress, nil, nil, &now, nil},
+		{"re-enter in_progress keeps started_at (sticky)", StatusInProgress, pt(earlier), nil, pt(earlier), nil},
+		{"in_progress->done stamps completed_at, keeps started_at", StatusDone, pt(earlier), nil, pt(earlier), &now},
+		{"done idempotent keeps original completed_at", StatusDone, pt(earlier), pt(earlier), pt(earlier), pt(earlier)},
+		{"done->open clears completed_at, keeps started_at (destructive)", StatusOpen, pt(earlier), pt(earlier), pt(earlier), nil},
+		{"done->in_progress reactivates: clears completed_at, keeps started_at", StatusInProgress, pt(earlier), pt(earlier), pt(earlier), nil},
+		{"done->archived preserves both (filed finished task keeps record)", StatusArchived, pt(earlier), pt(earlier), pt(earlier), pt(earlier)},
+		{"open->blocked before any work preserves nils", StatusBlocked, nil, nil, nil, nil},
+		{"in_progress->blocked preserves timestamps", StatusBlocked, pt(earlier), nil, pt(earlier), nil},
+		{"archived(completed)->open restore clears completed_at", StatusOpen, pt(earlier), pt(earlier), pt(earlier), nil},
+		{"open from fresh stays clean", StatusOpen, nil, nil, nil, nil},
+		{"open->done directly stamps completed_at (started stays nil)", StatusDone, nil, nil, nil, &now},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			gotStarted, gotCompleted := NextLifecycle(c.newStatus, c.started, c.completed, now)
+			if !eqTimePtr(gotStarted, c.wantStarted) {
+				t.Errorf("started = %v, want %v", gotStarted, c.wantStarted)
+			}
+			if !eqTimePtr(gotCompleted, c.wantCompleted) {
+				t.Errorf("completed = %v, want %v", gotCompleted, c.wantCompleted)
 			}
 		})
 	}

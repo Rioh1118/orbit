@@ -1,99 +1,127 @@
-import { Badge } from "@/components/ui/Badge";
+import { useState } from "react";
 import { ErrorText } from "@/components/ui/ErrorText";
-import { useDeleteTask, useTasks, useUpdateTask } from "./hooks";
-import { TASK_CATEGORIES, type TaskCategory, type TaskStatus } from "./types";
+import { DeleteTaskDialog } from "./DeleteTaskDialog";
+import { EditTaskDialog } from "./EditTaskDialog";
+import { FilterBar } from "./FilterBar";
+import { InlineTaskCreate } from "./InlineTaskCreate";
+import { TaskRow } from "./TaskRow";
+import { filterTasks } from "./filters";
+import { useCreateTask, useDeleteTask, useTasks, useUpdateTask } from "./hooks";
+import type { RowAction } from "./taskState";
+import { useTaskFilters } from "./useTaskFilters";
+import type { Task, TaskCategory } from "./types";
 
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  open: "未着手",
-  in_progress: "進行中",
-  blocked: "ブロック",
-  done: "完了",
-  archived: "アーカイブ",
-};
+interface EmptyStateProps {
+  hasAnyTasks: boolean;
+  onClearFilter: () => void;
+}
 
-const CATEGORY_LABEL: Record<TaskCategory, string> = TASK_CATEGORIES.reduce(
-  (acc, c) => {
-    acc[c.value] = c.label;
-    return acc;
-  },
-  {} as Record<TaskCategory, string>,
-);
+function EmptyState({ hasAnyTasks, onClearFilter }: EmptyStateProps) {
+  if (!hasAnyTasks) {
+    return (
+      <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-ink-muted">
+        最初のタスクを作りましょう。下の入力欄から追加できます。
+      </p>
+    );
+  }
+  return (
+    <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-ink-muted">
+      この条件のタスクはありません。{" "}
+      <button
+        type="button"
+        onClick={onClearFilter}
+        className="rounded text-primary underline underline-offset-2 hover:text-primary-hover"
+      >
+        フィルタをクリア
+      </button>
+    </p>
+  );
+}
 
-const selectClass =
-  "rounded-md border border-border-strong bg-surface px-2 py-1 text-xs text-ink outline-none focus:border-primary";
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "不明なエラーが発生しました";
+}
 
 export function TaskList() {
   const { data, isLoading, error } = useTasks();
-  const update = useUpdateTask();
+  const { filter, setStatus, setCategory, clear } = useTaskFilters();
+  const update = useUpdateTask(); // row-level promote / category / menu transitions
+  const editUpdate = useUpdateTask(); // edit dialog (separate so its errors stay in the dialog)
   const remove = useDeleteTask();
+  const create = useCreateTask();
+
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [deleting, setDeleting] = useState<Task | null>(null);
+  // Category persists across creates: the last-used category is the next default.
+  const [createCategory, setCreateCategory] = useState<TaskCategory>("new_feature");
 
   if (isLoading) return <p className="text-sm text-ink-muted">読み込み中...</p>;
-  if (error) return <ErrorText>{(error as Error).message}</ErrorText>;
-  if (!data || data.data.length === 0)
-    return (
-      <p className="text-sm text-ink-muted">
-        タスクがありません。新規作成してください。
-      </p>
-    );
+  if (error) return <ErrorText>{errorMessage(error)}</ErrorText>;
+
+  const allTasks = data?.data ?? [];
+  const visible = filterTasks(allTasks, filter);
+
+  function handleRowAction(task: Task, action: RowAction) {
+    if (action.id === "edit") {
+      setEditing(task);
+    } else if (action.id === "delete") {
+      setDeleting(task);
+    } else if (action.toStatus) {
+      update.mutate({ id: task.id, input: { status: action.toStatus } });
+    }
+  }
 
   return (
-    <ul className="divide-y divide-border">
-      {data.data.map((t) => (
-        <li key={t.id} className="flex items-center justify-between gap-3 py-3">
-          <div className="min-w-0 flex-1">
-            <p
-              className={`truncate font-medium ${t.status === "done" ? "text-ink-muted line-through" : "text-ink"}`}
-            >
-              {t.title}
-            </p>
-            <div className="mt-1 flex items-center gap-2 text-xs text-ink-muted">
-              <Badge tone="neutral">
-                {CATEGORY_LABEL[t.category] ?? t.category}
-              </Badge>
-              {t.description && <span className="truncate">{t.description}</span>}
-            </div>
-          </div>
-          <select
-            value={t.category}
-            onChange={(e) =>
-              update.mutate({
-                id: t.id,
-                input: { category: e.target.value as TaskCategory },
-              })
-            }
-            className={selectClass}
-            aria-label="カテゴリ変更"
-          >
-            {TASK_CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={t.status}
-            onChange={(e) =>
-              update.mutate({ id: t.id, input: { status: e.target.value as TaskStatus } })
-            }
-            className={selectClass}
-            aria-label="ステータス変更"
-          >
-            {(Object.entries(STATUS_LABEL) as [TaskStatus, string][]).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => remove.mutate(t.id)}
-            className="text-xs text-ink-muted transition-colors hover:text-danger"
-            aria-label="削除"
-          >
-            削除
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-4">
+      <FilterBar filter={filter} onStatusChange={setStatus} onCategoryChange={setCategory} />
+
+      {/* Optimistic row mutations roll back silently on failure; surface the reason. */}
+      {update.error && <ErrorText>更新に失敗しました: {errorMessage(update.error)}</ErrorText>}
+      {remove.error && <ErrorText>削除に失敗しました: {errorMessage(remove.error)}</ErrorText>}
+
+      {visible.length === 0 ? (
+        <EmptyState hasAnyTasks={allTasks.length > 0} onClearFilter={clear} />
+      ) : (
+        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+          {visible.map((t) => (
+            <TaskRow
+              key={t.id}
+              task={t}
+              onPromote={(to) => update.mutate({ id: t.id, input: { status: to } })}
+              onCategoryChange={(category) => update.mutate({ id: t.id, input: { category } })}
+              onRowAction={(action) => handleRowAction(t, action)}
+            />
+          ))}
+        </ul>
+      )}
+
+      <InlineTaskCreate
+        category={createCategory}
+        onCategoryChange={setCreateCategory}
+        isPending={create.isPending}
+        createError={create.error ? errorMessage(create.error) : undefined}
+        autoFocus={allTasks.length === 0}
+        onCreate={async ({ title, category }) => {
+          await create.mutateAsync({ title, category });
+        }}
+      />
+
+      {editing && (
+        <EditTaskDialog
+          open
+          task={editing}
+          onClose={() => setEditing(null)}
+          onSave={(input) => editUpdate.mutateAsync({ id: editing.id, input }).then(() => undefined)}
+        />
+      )}
+      {deleting && (
+        <DeleteTaskDialog
+          open
+          taskTitle={deleting.title}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => remove.mutate(deleting.id)}
+        />
+      )}
+    </div>
   );
 }
