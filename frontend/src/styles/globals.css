@@ -6,24 +6,26 @@
 
 /* ============================================================
    Stage 3 "Clean Ledger" tokens (light). Values WCAG-measured in A-0:
-   - border-strong #76879c → 3.42:1 on canvas (brief proposed #c9d2dc = 1.42:1, failed 1.4.11)
-   - friction      #cb7016 → 3.33:1 on canvas (brief proposed #d4791a = 2.99:1, just failed)
-   - accent        #00a368 → 3.26:1 on white: non-text ONLY (text would need 4.5:1)
-   Names are semantic so a future theme can swap values without touching components.
+   - border-strong 118 135 156 (#76879c) → 3.42:1 on canvas (1.4.11 floor)
+   - friction      203 112 22  (#cb7016) → 3.33:1 on canvas
+   - accent        0 163 104   (#00a368) → 3.26:1 on white: NON-TEXT only
+   Values are stored as space-separated RGB CHANNELS (not hex) so Tailwind's
+   `<alpha-value>` placeholder works — `bg-accent/12`, `hover:bg-ink/5`, etc.
+   compile to rgb(var(--color-x) / 0.12). Names are semantic for future theming.
    ============================================================ */
 :root {
-  --color-canvas: #f5f7fa;
-  --color-surface: #ffffff;
-  --color-elevated: #ffffff;
-  --color-border: #e3e8ef;
-  --color-border-strong: #76879c;
-  --color-ink: #0b1d35;
-  --color-ink-muted: #5a6b80;
-  --color-primary: #0d3b66;
-  --color-primary-hover: #0a2d4f;
-  --color-accent: #00a368;
-  --color-friction: #cb7016;
-  --color-danger: #c0392b;
+  --color-canvas: 245 247 250;
+  --color-surface: 255 255 255;
+  --color-elevated: 255 255 255;
+  --color-border: 227 232 239;
+  --color-border-strong: 118 135 156;
+  --color-ink: 11 29 53;
+  --color-ink-muted: 90 107 128;
+  --color-primary: 13 59 102;
+  --color-primary-hover: 10 45 79;
+  --color-accent: 0 163 104;
+  --color-friction: 203 112 22;
+  --color-danger: 192 57 43;
 
   --shadow-sm: 0 1px 2px rgba(11, 29, 53, 0.06);
   --shadow-md: 0 8px 24px rgba(11, 29, 53, 0.08);
@@ -37,20 +39,20 @@ body,
 }
 
 body {
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
+  background-color: rgb(var(--color-canvas));
+  color: rgb(var(--color-ink));
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 @layer base {
   /* Visible keyboard focus on every interactive element (WCAG 2.4.7 / 1.4.11).
-     primary (#0d3b66) = 10.67:1 on canvas, robust on both canvas and surface — far
-     above the 3:1 floor. border-strong is reserved for resting functional borders
-     (inputs / KeyCap), not focus. Focus never uses transform, so the element does
-     not shift on focus (brief §9.2). :where() keeps specificity 0 for opt-out. */
+     primary = 10.67:1 on canvas, robust on canvas and surface — far above the 3:1
+     floor. border-strong is reserved for resting functional borders (inputs /
+     KeyCap), not focus. Focus never uses transform (no shift on focus, brief §9.2).
+     :where() keeps specificity 0 for opt-out. */
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid rgb(var(--color-primary));
     outline-offset: 2px;
   }
 }
@@ -131,18 +133,18 @@ body {
 /* Modal scrim: ink (navy), not black, to stay inside the Ledger world (brief §8).
    Fallback is a denser opaque navy where backdrop-filter is unsupported. */
 dialog::backdrop {
-  background: rgba(11, 29, 53, 0.48);
+  background: rgb(var(--color-ink) / 0.48);
 }
 
 @supports (backdrop-filter: blur(8px)) {
   dialog::backdrop {
-    background: rgba(11, 29, 53, 0.32);
+    background: rgb(var(--color-ink) / 0.32);
     backdrop-filter: blur(8px);
   }
 }
 
 ::selection {
-  background: var(--color-primary);
+  background: rgb(var(--color-primary));
   color: #ffffff;
 }
 

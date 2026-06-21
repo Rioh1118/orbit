@@ -1,28 +1,35 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Colors are stored as RGB channels in globals.css (e.g. --color-primary: 13 59 102)
+ * and consumed here as rgb(var(--x) / <alpha-value>) so every utility supports the
+ * opacity modifier: bg-primary, bg-accent/12, hover:bg-ink/5, border-border-strong, …
+ */
+const withAlpha = (v: string) => `rgb(var(${v}) / <alpha-value>)`;
+
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        canvas: "var(--color-canvas)",
-        surface: "var(--color-surface)",
-        elevated: "var(--color-elevated)",
+        canvas: withAlpha("--color-canvas"),
+        surface: withAlpha("--color-surface"),
+        elevated: withAlpha("--color-elevated"),
         border: {
-          DEFAULT: "var(--color-border)",
-          strong: "var(--color-border-strong)",
+          DEFAULT: withAlpha("--color-border"),
+          strong: withAlpha("--color-border-strong"),
         },
         ink: {
-          DEFAULT: "var(--color-ink)",
-          muted: "var(--color-ink-muted)",
+          DEFAULT: withAlpha("--color-ink"),
+          muted: withAlpha("--color-ink-muted"),
         },
         primary: {
-          DEFAULT: "var(--color-primary)",
-          hover: "var(--color-primary-hover)",
+          DEFAULT: withAlpha("--color-primary"),
+          hover: withAlpha("--color-primary-hover"),
         },
-        accent: "var(--color-accent)",
-        friction: "var(--color-friction)",
-        danger: "var(--color-danger)",
+        accent: withAlpha("--color-accent"),
+        friction: withAlpha("--color-friction"),
+        danger: withAlpha("--color-danger"),
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
