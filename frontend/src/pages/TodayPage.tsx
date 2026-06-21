@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ModeBar } from "@/components/orbit/ModeBar";
 import { StatTile } from "@/components/orbit/StatTile";
+import { Button } from "@/components/ui/Button";
 import { Divider } from "@/components/ui/Divider";
 import { ErrorText } from "@/components/ui/ErrorText";
 import { KeyCap } from "@/components/ui/KeyCap";
@@ -104,7 +105,7 @@ export default function TodayPage() {
   const openCount = openFrictions?.data.length ?? 0;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10">
+    <div className="mx-auto max-w-3xl space-y-12">
       <ActiveSliceCard />
 
       <section>
@@ -117,16 +118,16 @@ export default function TodayPage() {
       <section>
         <Divider label="本日 / モード" />
         <div className="mt-5">
-          {isLoading && <p className="text-sm text-mist">読み込み中…</p>}
+          {isLoading && <p className="text-sm text-ink-muted">読み込み中…</p>}
           {error && <ErrorText>{(error as Error).message}</ErrorText>}
           {!isLoading && !error && modeSlices.length === 0 && (
-            <p className="text-sm text-mist">本日の作業区間はまだありません</p>
+            <p className="text-sm text-ink-muted">本日の作業区間はまだありません</p>
           )}
           {modeSlices.length > 0 && <ModeBar slices={modeSlices} />}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile label="計測時間" value={formatHM(totalSec)} hint="本日" />
         <StatTile label="区間" value={workCount} hint="本日" />
         <StatTile label="詰まり" value={openCount} hint="未解決" />
@@ -135,16 +136,12 @@ export default function TodayPage() {
       <section>
         <Divider label="詰まりログ" />
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="flex items-center gap-1.5 text-xs text-mist">
+          <p className="flex items-center gap-1.5 text-xs text-ink-muted">
             <KeyCap k="f" size="sm" /> キーで記録
           </p>
-          <button
-            type="button"
-            onClick={() => setFrictionOpen(true)}
-            className="rounded-md border border-instrument/40 bg-surface px-3 py-1 text-sm text-parchment transition-colors hover:border-instrument"
-          >
+          <Button type="button" variant="subtle" onClick={() => setFrictionOpen(true)}>
             + 詰まり
-          </button>
+          </Button>
         </div>
         <div className="mt-3">
           <FrictionLog limit={20} />

@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/Badge";
+import { ErrorText } from "@/components/ui/ErrorText";
 import { useDeleteTask, useTasks, useUpdateTask } from "./hooks";
 import { TASK_CATEGORIES, type TaskCategory, type TaskStatus } from "./types";
 
@@ -17,32 +19,39 @@ const CATEGORY_LABEL: Record<TaskCategory, string> = TASK_CATEGORIES.reduce(
   {} as Record<TaskCategory, string>,
 );
 
+const selectClass =
+  "rounded-md border border-border-strong bg-surface px-2 py-1 text-xs text-ink outline-none focus:border-primary";
+
 export function TaskList() {
   const { data, isLoading, error } = useTasks();
   const update = useUpdateTask();
   const remove = useDeleteTask();
 
-  if (isLoading) return <p className="text-sm text-neutral-400">読み込み中...</p>;
-  if (error) return <p className="text-sm text-red-400">エラー: {(error as Error).message}</p>;
+  if (isLoading) return <p className="text-sm text-ink-muted">読み込み中...</p>;
+  if (error) return <ErrorText>{(error as Error).message}</ErrorText>;
   if (!data || data.data.length === 0)
-    return <p className="text-sm text-neutral-400">タスクがありません。新規作成してください。</p>;
+    return (
+      <p className="text-sm text-ink-muted">
+        タスクがありません。新規作成してください。
+      </p>
+    );
 
   return (
-    <ul className="divide-y divide-neutral-800">
+    <ul className="divide-y divide-border">
       {data.data.map((t) => (
         <li key={t.id} className="flex items-center justify-between gap-3 py-3">
           <div className="min-w-0 flex-1">
             <p
-              className={`truncate font-medium ${t.status === "done" ? "text-neutral-500 line-through" : ""}`}
+              className={`truncate font-medium ${t.status === "done" ? "text-ink-muted line-through" : "text-ink"}`}
             >
               {t.title}
             </p>
-            <p className="truncate text-xs text-neutral-500">
-              <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-300">
+            <div className="mt-1 flex items-center gap-2 text-xs text-ink-muted">
+              <Badge tone="neutral">
                 {CATEGORY_LABEL[t.category] ?? t.category}
-              </span>
-              {t.description && <span className="ml-2">{t.description}</span>}
-            </p>
+              </Badge>
+              {t.description && <span className="truncate">{t.description}</span>}
+            </div>
           </div>
           <select
             value={t.category}
@@ -52,7 +61,7 @@ export function TaskList() {
                 input: { category: e.target.value as TaskCategory },
               })
             }
-            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs"
+            className={selectClass}
             aria-label="カテゴリ変更"
           >
             {TASK_CATEGORIES.map((c) => (
@@ -66,7 +75,7 @@ export function TaskList() {
             onChange={(e) =>
               update.mutate({ id: t.id, input: { status: e.target.value as TaskStatus } })
             }
-            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs"
+            className={selectClass}
             aria-label="ステータス変更"
           >
             {(Object.entries(STATUS_LABEL) as [TaskStatus, string][]).map(([k, v]) => (
@@ -78,7 +87,7 @@ export function TaskList() {
           <button
             type="button"
             onClick={() => remove.mutate(t.id)}
-            className="text-xs text-neutral-500 hover:text-red-400"
+            className="text-xs text-ink-muted transition-colors hover:text-danger"
             aria-label="削除"
           >
             削除

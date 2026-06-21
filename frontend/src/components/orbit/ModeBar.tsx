@@ -21,18 +21,18 @@ export function ModeBar({ slices }: ModeBarProps) {
       {sorted.map((s) => (
         <li key={s.modeKey} className="flex items-center gap-3 text-sm">
           <KeyCap k={s.modeKey} size="sm" />
-          <span className="w-24 text-mist">{s.label}</span>
-          <div className="relative h-1.5 flex-1 overflow-hidden rounded-sm bg-instrument/20">
+          <span className="w-24 text-ink-muted">{s.label}</span>
+          <div className="relative h-1.5 flex-1 overflow-hidden rounded-sm bg-ink/5">
             <div
-              className="absolute inset-y-0 left-0"
+              className="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
               style={{
                 width: `${s.pct}%`,
                 backgroundColor:
-                  modeColors[s.mode as SliceMode] ?? "var(--color-instrument)",
+                  modeColors[s.mode as SliceMode] ?? "rgb(var(--color-ink-muted))",
               }}
             />
           </div>
-          <span className="w-10 text-right font-mono text-xs text-parchment-muted">
+          <span className="w-10 text-right font-mono text-xs text-ink-muted">
             {s.pct}%
           </span>
         </li>

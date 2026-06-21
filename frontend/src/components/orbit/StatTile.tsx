@@ -6,10 +6,10 @@ interface StatTileProps {
 
 export function StatTile({ label, value, hint }: StatTileProps) {
   return (
-    <div className="rounded-md border border-instrument/30 bg-canvas/40 p-4">
-      <div className="text-xs font-medium text-mist">{label}</div>
-      <div className="mt-2 font-mono text-3xl text-parchment">{value}</div>
-      {hint && <div className="mt-1 text-xs text-parchment-muted">{hint}</div>}
+    <div className="rounded-lg border border-border bg-surface p-6 shadow-sm motion-safe:animate-[moveInBottom_500ms_ease-out]">
+      <div className="text-xs font-medium text-ink-muted">{label}</div>
+      <div className="mt-2 font-mono text-3xl font-normal text-ink">{value}</div>
+      {hint && <div className="mt-1 text-xs text-ink-muted">{hint}</div>}
     </div>
   );
 }
