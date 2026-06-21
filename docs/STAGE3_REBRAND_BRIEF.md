@@ -1,12 +1,15 @@
 # Stage 3 — Frontend Rebrand 方針ブリーフ
 
-**Status**: 計画中 (`feat/rebrand-front-design`)
+**Status**: 計画中 / レビュー反映済 (`feat/rebrand-front-design`) — 実装は §10 のスタック PR 戦略で進める
 **Branch**: `feat/rebrand-front-design`
 **関連**: [DESIGN_CONCEPT.md](./DESIGN_CONCEPT.md) / [STAGE2_UI_BRIEF.md](./STAGE2_UI_BRIEF.md) / `sample/` (Natours 教材)
 
 > このドキュメントは「なぜ Stage 3 をやるのか」「どのデザイン方向に振り直すか」を固定するためのもの。
 > Stage 2 で構造を簡素化し WCAG AA を担保した上で、Stage 3 は **見た目とインタラクションの質感**を刷新する。
-> 機能追加はゼロ。純粋にビジュアル / マイクロインタラクションの層を入れ替える。
+> Stage 3 の本丸 (PR A, §10.2) は **機能追加ゼロ**の純ビジュアル / マイクロインタラクション差替。
+> ただし §7.12 (Tasks) / §7.9 (ThenVsNow) の構造再設計は**挙動変更を含む**ため、純ビジュアル PR とは
+> 別の feat PR (PR B / PR C, §10.3-10.4) に分離する。「機能追加ゼロ」は PR A の性格であって Stage 3 全体の
+> 性格ではない — この区別を曖昧にしない。
 
 ---
 
@@ -105,13 +108,13 @@ Stage 3 は後者へ視座を寄せる。両立 (テーマ切替) は今回ス�
 | `--color-canvas` | `#f5f7fa` | ページ最背面 (薄いブルーグレー) | `ink` で 14:1+ |
 | `--color-surface` | `#ffffff` | カード / パネル前面 | `ink` で 16:1+ |
 | `--color-elevated` | `#ffffff` + `shadow-md` | モーダル / hover 浮き | — |
-| `--color-border` | `#e3e8ef` | カード / Divider / NavLink 下線 (静的罫、3:1 不問) | — |
-| `--color-border-strong` | `#c9d2dc` | フォーム入力枠 / KeyCap / focus-visible outline (**3:1 floor 必須箇所**) | 3:1 floor |
+| `--color-border` | `#e3e8ef` | **純装飾の罫のみ** (背景の薄い区切り。canvas 上で 1.12:1 = 情報を持たない罫線専用、UI コンポーネント境界には使わない) | — (装飾罫は 1.4.11 対象外) |
+| `--color-border-strong` | `#c9d2dc` | **情報を持つ境界すべて**: フォーム入力枠 / KeyCap / カードや行の機能的な輪郭 / focus-visible outline (**3:1 floor 必須箇所**) | 3:1 floor (canvas 上で要実測) |
 | `--color-ink` | `#0b1d35` | 主要テキスト・見出し (深いネイビー) | canvas で 13:1+ |
 | `--color-ink-muted` | `#5a6b80` | 副次テキスト・ラベル・hint | canvas で 4.5:1+ |
 | `--color-primary` | `#0d3b66` | 主要 CTA / NavLink active | white text で 10:1+ |
 | `--color-primary-hover` | `#0a2d4f` | hover/active | — |
-| `--color-accent` | `#00a368` | growth / 成長 / 進捗 (Resona グリーン寄り) | white text で 4.5:1+ |
+| `--color-accent` | `#00a368` | growth / 成長 / 進捗 (Resona グリーン寄り)。**グラフィック / 非テキスト UI 専用** (Donut スライス・進捗バー・✓ glyph の fill)。**文字色には使わない** | 白文字で **3.26:1 = 4.5:1 不合格** → テキスト用途禁止。非テキスト UI として 3:1 (1.4.11) は満たす |
 | `--color-friction` | `#d4791a` | 詰まりタグ / 警告未満 | — |
 | `--color-danger` | `#c0392b` | エラー | — |
 | `--shadow-sm` | `0 1px 2px rgba(11,29,53,.06)` | カード基本 | — |
@@ -135,7 +138,7 @@ Stage 3 は後者へ視座を寄せる。両立 (テーマ切替) は今回ス�
 | ルール | 内容 | 理由 |
 |---|---|---|
 | **CTA = primary only** | ボタン CTA は `primary` (ネイビー) 一択。`accent` を CTA に使わない | 二重体系は長期で必ず崩れる (用途規約を覚えていない人が CTA に accent を当てる)。Resona / 三井住友の UI 観察でも CTA = ネイビーで一貫している |
-| **accent = 成長/振り返り示唆専用** | `accent` (グリーン) は **(a)** `ThenVsNowChart` の Now 線、 **(b)** 「前より速い」「改善した」バッジ、 **(c)** 完了チェックの fill — の 3 用途のみ | 「リスロン」のサインを画面に強く出すための保留色。CTA で消費しない |
+| **accent = 成長/振り返り示唆専用 + 非テキストのみ** | `accent` (グリーン) は **(a)** Donut の Now スライス fill、 **(b)** 改善バッジの**背景塗り or アイコン** (文字は ink)、 **(c)** 完了チェック ✓ の fill — の 3 用途のみ。**accent を文字色に使わない** (白文字 3.26:1 不合格, §3.1)。バッジは「accent 背景 + 白/ink 文字 (要実測)」か「accent 12% 背景 + ink 文字」 | 「リスロン」のサインを画面に強く出すための保留色。CTA で消費しない。WCAG 上テキストにできないため非テキストへ用途確定 |
 | **Logo = ink only** | App ヘッダーの `orbit` wordmark および `◯` シンボルは `ink` 単色ベタ。グラデも accent ドットもなし | 主役 (ActiveSliceCard / StatusHero) と視線競合させない。世界観をストイックに保つ |
 | **friction / danger は単独** | バッジ / `ErrorText` でしか使わない | Stage 2 の規律を継承 |
 
@@ -173,8 +176,15 @@ Stage 3 は後者へ視座を寄せる。両立 (テーマ切替) は今回ス�
 
 ### 4.2 Weight 規約 — **規約**
 
-Stage 2 の `400/500/600` から **`300〜600`** に幅を広げる。`sample/sass/base/_typography.scss` の優美さの
-正体は装飾ではなく**字重コントラスト**だったため、ここを Orbit に翻訳する。
+Stage 2 の `400/500/600` から **`300〜600`** に幅を広げる。字重コントラストで優美さを出す方針。
+
+> **訂正 (レビュー反映)**: 当初「`sample/sass/base/_typography.scss` の優美さ = 字重コントラスト」を根拠に
+> したが、実ソースの `_typography.scss` は **400/700 の二択**で weight 300 は存在しない (300 は
+> `_navigation.scss` / `_card.scss` にのみ局所使用)。よって「sample 由来」ではなく **Orbit 独自の Ledger
+> 判断**として weight 300 見出しを採る。**実装前提**: `globals.css` の Inter `@import` は現状
+> `wght@400;500;600` のみで 300 を読み込まないため、**`wght@300;400;500;600` へ拡張必須** (§10.2 Task A1)。
+> 拡張しない場合 h1 は fallback 400 に落ち、300↔600 コントラストが消える。300 を採らない代替案は
+> 「h1 = 400 + `tracking-tight`」。
 
 | 用途 | weight | size 例 | 補足 |
 |---|---|---|---|
@@ -232,18 +242,26 @@ Ledger 世界観の「白い余白」を担保しつつ業務 UI のスクロー
 | 小要素間 gap | `gap-2`〜`gap-3` (8〜12px) | 同等 | ボタン群、KeyCap + ラベル |
 | inline 要素間 | `gap-1.5` (6px) | 同等 | アイコン + テキスト |
 
-### 5.3 sample (rem 62.5%) → Tailwind (px) 換算メモ
+### 5.3 sample (rem 62.5%) → Tailwind (px) マッピング表
 
-`sample/sass/base/_base.scss:9-24` は `html { font-size: 62.5% }` で 1rem = 10px。値を直接持ち込むと
-Orbit (業務 UI) には過大なので **70% 圧縮** が原則。
+`sample/sass/base/_base.scss:9-24` は `html { font-size: 62.5% }` で 1rem = 10px (加えて breakpoint で
+56.25%/50%/75% に再スケール — これは Tailwind 固定 px には持ち込まず、全 rem を事前解決して落とす)。
 
-| sample | sample 実 px | Orbit 採用 px | Tailwind |
-|---|---|---|---|
-| `1.5rem 4rem` (btn padding) | 15 / 40 | 10 / 20 | `py-2.5 px-5` |
-| `3rem` (gap) | 30 | 20 | `gap-5` |
-| `6rem` (gutter-vertical) | 60 | 40 | `py-10` |
-| `8rem` (gutter-vertical 大) | 80 | 48 | `py-12` |
-| `2rem` (margin-bottom 小) | 20 | 16 | `mb-4` |
+> **訂正 (レビュー反映)**: 旧文の「**70% 圧縮が原則**」は誤り。下表の実比率は 67/50/67/60/80% とバラバラで
+> 単一比率ではない。これは「sample 値を Ledger 中庸スケールへ**目分量でマッピングした結果表**」であって導出
+> ルールではない。**表に無い rem 値を「70%」で機械的に導出しないこと** (表を唯一の正とする)。
+> **モーション距離にも同方針を適用**: `translateY(3rem)`=30px → 20px (§6.1)。
+
+| sample | sample 実 px | Orbit 採用 px | Tailwind | 実比率 |
+|---|---|---|---|---|
+| `1.5rem 4rem` (btn padding) | 15 / 40 | 10 / 20 | `py-2.5 px-5` | 67/50% |
+| `3rem` (gap) | 30 | 20 | `gap-5` | 67% |
+| `6rem` (gutter-vertical) | 60 | 40 | `py-10` | 67% |
+| `8rem` (gutter-vertical 大) | 80 | 48 | `py-12` | 60% |
+| `2rem` (margin-bottom 小) | 20 | 16 | `mb-4` | 80% |
+
+> 注: btn padding は **§5.3 のこの行 (`py-2.5`) を唯一の正**とする。旧 §11 が同値を `py-3` と記していた矛盾は
+> §11 側を修正済。
 
 ---
 
@@ -253,17 +271,24 @@ Orbit (業務 UI) には過大なので **70% 圧縮** が原則。
 
 ### 6.1 採用するアニメ語彙
 
-| 名前 | 起点 | 用途 | 持続 |
+> **レビュー反映**: (1) keyframe の起点 (`_animations.scss`) は**距離**だけを定義し、timing/delay は
+> `_button.scss:67-70` 側にある。sample は root 62.5% (1rem=10px) 前提なので、Orbit (Tailwind 1rem=16px) では
+> **px を明示固定**しないと `translateY(3rem)` が 48px になり手触りが変わる。下表に px を明記する。
+> (2) **CTA への delay は撤廃** — 旧案の 750ms delay は §1.3「入力導線を絶対に遅延させない」に違反 (§6.3-2 参照)。
+> moveInBottom の delay は**非操作要素 (見出し等) のみ**に許可。
+
+| 名前 | 距離の起点 | 用途 | 持続 / 距離 |
 |---|---|---|---|
-| `moveInBottom` | `sample/sass/base/_animations.scss:33-43` | StatTile / Hero / 主要 CTA の初期描画 | 500ms / `ease-out` / delay 750ms / `fill-mode: backwards` |
-| `moveInLeft` / `moveInRight` | 同 1-31 | ページ単位の見出し用 (控えめに) | 500ms |
+| `moveInBottom` | `_animations.scss:36` (`translateY(3rem)`=30px) | StatTile / Hero の初期描画 (**CTA には付けない**) | 500ms / `ease-out` / **distance `translateY(20px)`** (30→20px 圧縮) / 非操作要素のみ delay 可 / `backwards` |
+| `moveInLeft` / `moveInRight` | `:1-31` (`translateX(±10rem)`=100px + overshoot `±1rem`=10px) | ページ見出し用 (控えめに) | 500ms / **distance `translateX(40px)` + ~10% overshoot** |
 | `fadeIn` | (新規追加) | モーダル背景のみ (リスト要素には**使わない**、§6.3) | 200ms |
 | `scaleIn` | (新規追加) | バッジ初期描画のみ | 150ms |
-| Button hover lift + ::after グロー | `_button.scss:19-27, 54-65` | 全ボタン共通 | transition 200ms / glow 400ms |
-| Button active sink | `_button.scss:29-34` | クリック瞬間の `translateY(-1px)` | 200ms |
-| Radio reveal | `_form.scss:86-104` | ModeSelector / FrictionModal | opacity 200ms |
-| Input label lift | `_form.scss:39-52` | フォームのラベル浮上 | 300ms |
+| Button hover lift + ::after グロー | `_button.scss:19-27, 54-65` | 全ボタン共通 | transition 200ms / hover `translateY(-2px)` / glow `::after` を **`scaleX(1.4) scaleY(1.6)` + opacity 0** へ 400ms |
+| Button active sink | `_button.scss:29-34` | クリック瞬間の `translateY(-1px)` | 200ms (focus では transform しない, §9.2) |
+| Radio reveal | `_form.scss:65-104` | ModeSelector / FrictionModal | opacity 200ms |
+| Input label lift | `_form.scss:39-52` | フォームのラベル浮上 | 300ms / distance `translate-y-7`(28px) (§7.8) |
 | NavLink underline slide | (新規) | ヘッダーナビの active 表現 | 250ms / `::after width 0→100%` |
+| (CTA 初期演出の `--animated`) | `_button.scss:67-70` (`moveInBottom .5s ease-out .75s backwards`) | **採用しない** (delay が入力導線を遅延, §6.3) | — |
 
 ### 6.2 採用しないもの
 
@@ -278,7 +303,9 @@ Orbit (業務 UI) には過大なので **70% 圧縮** が原則。
 1. **アニメは情報を持つときのみ**。状態が変わった (選択された / フォーカスした / ロードされた) ときに
    だけ動かす。常時微振動するエフェクトは入れない。
 2. **入力導線を遅延させない**。フォーム送信・タイマー開始・Friction 起票などのクリック→反応の間に
-   アニメで意図的な間を挟まない。
+   アニメで意図的な間を挟まない。**操作可能要素 (CTA / インライン作成フィールド / 確定後の再フォーカス
+   先) は初期描画 delay をゼロとする規約**。delay 付き `moveInBottom` は見出し等の非操作要素に限定
+   (旧案が CTA に付けていた 750ms delay は撤廃, §6.1/§7.1)。
 3. **`prefers-reduced-motion: reduce` 完全対応**:
    ```css
    @media (prefers-reduced-motion: reduce) {
@@ -311,21 +338,38 @@ Orbit (業務 UI) には過大なので **70% 圧縮** が原則。
 
 各コンポーネントの「現状 → 新仕様 → 意図」を一覧化する。実装ガイドとしてそのまま参照可。
 
+### 7.0 スタイル配置の3層 — **規約**
+
+「Tailwind だと表現力不足では」という議論への結論。全面 SCSS 化はしない (トークン規律喪失・二重体系・§12
+「bundle 増加ゼロ」違反のため)。層で役割を分ける:
+
+- **Tier 1 Tailwind utilities (既定)**: レイアウト・余白・トークン配色・単純な状態。95%。
+- **Tier 2 globals.css 素 CSS**: keyframes / `prefers-reduced-motion` / `::backdrop` / `@supports` /
+  `.prose-ledger` / `::selection` — Tailwind で書けない物はすべてここ。
+- **Tier 3 co-located CSS Modules (opt-in / 例外)**: pseudo-element 振付が utilities だと読めない少数の
+  プリミティブ (現実候補は Button グロー・Radio reveal) のみ。**SCSS ではなく素の `*.module.css`** (Vite
+  ネイティブ・新依存ゼロ) で、内部も `var(--color-*)` トークンを使う。**PR A で実装して utilities が辛いと
+  判明したときだけ導入** (YAGNI、先に作らない)。整理目的なら `@layer components` / `cva` で足りる。
+
 ### 7.1 `Button` (`components/ui/Button.tsx`)
 
 **現状**: フラットな border + bg。hover で border 色だけ変わる。
-**新仕様**:
-- variants: `primary` (ネイビー fill / white text) / `accent` (グリーン fill / white text) / `subtle`
-  (white bg / border / ink text) / `ghost` (text のみ)
+**新仕様** (レビュー反映):
+- variants: `primary` (ネイビー fill / white text) / `subtle` (white bg / border-strong / ink text) /
+  `ghost` (text のみ) / `danger` (削除確認用, §7.12.3)。
+  **`accent` variant は作らない** — §3.3 で accent を CTA 禁止 + 文字色禁止としたため、accent ボタンは
+  「存在するが押せない罠」になる。型 (variant union) から除外し、規約違反を実装不能にする。
 - ベース: `rounded-md`、`px-4 py-2`、`transition-all duration-200`、`relative isolate`
-- hover: `translate-y-[-2px]`、`shadow-md`、`::after` (同色拡大グロー、opacity 0)
+- hover: `translate-y-[-2px]`、`shadow-md`、`::after` (同色拡大グロー `scaleX(1.4) scaleY(1.6)` / opacity 0 / 400ms)
 - active: `translate-y-[-1px]`、`shadow-sm`
-- focus-visible: outline `primary` 2px / offset 2px
+- focus-visible: outline `primary` 2px / offset 2px (**focus で transform しない**, §9.2)
 - disabled: `opacity-40 cursor-not-allowed transform-none shadow-none`
-- `--animated` 相当: `animation: moveInBottom 500ms ease-out 750ms backwards` を初期 CTA でのみ付与
+- **初期描画 `moveInBottom` は CTA に付けない** (§6.1/§6.3: delay が入力導線を遅延させる)。演出は見出し等の
+  非操作要素に限定。
 
 **意図**: sample の「押すと持ち上がってグロウが弾ける」手触りを移植。ただし grow は柔らかく
-(opacity 0 まで 400ms)、計器世界観から逸脱しない範囲。
+(opacity 0 まで 400ms)、計器世界観から逸脱しない範囲。**観光 LP の初回 delay 演出は業務道具では毎日の
+待ち時間になるため移植しない**。
 
 ### 7.2 `Card` (`components/ui/Card.tsx`)
 
@@ -365,24 +409,50 @@ Orbit (業務 UI) には過大なので **70% 圧縮** が原則。
 
 ### 7.7 `Radio` (新規 `components/ui/Radio.tsx`)
 
-**仕様**:
-- `<input type="radio" class="peer sr-only">` + `<label>` パターン
-- ラベル内に `<span>` を置いて視覚 radio (`h-5 w-5 rounded-full border-2 border-primary`) を描画
-- 内側ドット (`::after` または子 span): `bg-primary` 円、`opacity-0 transition-opacity duration-200`、
-  `peer-checked:opacity-100`
-- ラベル全体に `cursor-pointer`、`padding-left` で視覚 radio 分の余白
+**仕様** (レビュー反映で**マークアップ修正済**):
+- `peer-checked` は `input:checked ~ .target` という**兄弟**セレクタにコンパイルされる。よって視覚 radio /
+  内側ドットを `<label>` の**子孫**に置くと届かない (元案の構造的バグ)。input と視覚要素を**同階層の兄弟**に
+  フラット化する:
+  ```html
+  <input type="radio" id="mode-build" class="peer sr-only" name="mode">
+  <label for="mode-build" class="cursor-pointer pl-7 ...">
+    <span class="absolute left-0 h-5 w-5 rounded-full border-2 border-primary"></span>
+    <span class="absolute left-1 top-1 h-3 w-3 rounded-full bg-primary
+                 opacity-0 transition-opacity duration-200 peer-checked:opacity-100"></span>
+    ラベル文言
+  </label>
+  ```
+  ドット span は `<input class="peer">` の**後続兄弟**である必要があるので、`<input>` → 視覚 span 群の順に置く
+  (上記のように span を label の前に出すか、`peer` を持つ input の直後兄弟として配置)。
+- native input は `sr-only` (`display:none` ではない) — sample `_form.scss:66` の `display:none` は a11y 非対応
+  なので**意図的にアップグレード**。
 
-**意図**: `sample/sass/components/_form.scss:65-104` の流儀をそのまま移植。Tailwind の `peer-checked`
-変種で SCSS の `~` 兄弟セレクタを代替。
+**意図**: `sample/sass/components/_form.scss:65-104` の radio reveal の流儀を、Tailwind の兄弟 `peer-checked`
+で再現する。SCSS の `~ &__radio-label &__radio-button::after` (`:102`, 兄弟→子孫の2段) は Tailwind 単体で
+表現不可なため、上記のフラット兄弟構造に翻訳する。
 
 ### 7.8 `Input` (新規 `components/ui/Input.tsx`)
 
-**仕様**:
-- `<label>` をラップし、Floating Label 的に: input が `placeholder-shown` のときラベルが浮上前の位置
-  (`opacity-0 translate-y-[-1rem]`)、入力開始でラベルが上部に表示
-- input の border は `border-b-2 border-border-strong`、focus で `border-b-2 border-primary`
-- focus 時に弱い `shadow-md` を input に
-- invalid (`:focus:invalid`) で border を `danger` に
+**仕様** (レビュー反映で**マークアップ修正済**):
+- floating label も `peer` (兄弟セレクタ) なので **input が label の前の兄弟**である必要がある。label で input を
+  ラップしてはいけない (元案の構造的バグ)。正しい形:
+  ```html
+  <div class="relative">
+    <input id="x" class="peer ..." placeholder=" " />   <!-- placeholder は空白1個: :placeholder-shown を空欄時に発火 -->
+    <label for="x"
+      class="absolute left-0 top-2 text-ink-muted transition-all duration-300
+             peer-placeholder-shown:translate-y-7 peer-placeholder-shown:opacity-0
+             peer-placeholder-shown:invisible peer-focus:translate-y-0 peer-focus:opacity-100">
+      ラベル
+    </label>
+  </div>
+  ```
+- **移動量**: sample `_form.scss:51` は `translateY(-4rem)`=40px。元案の `-1rem`(16px) では label が入力欄に重なり
+  floating が成立しないため、**`translate-y-7`(≈28px, 70% 圧縮相当) 以上**を採る。
+- **`visibility` も切替**: `opacity-0` だけだと空欄時に label が a11y ツリー / タブ順に残るため
+  `peer-placeholder-shown:invisible` を併記 (sample `:48` は `opacity:0; visibility:hidden;` 両方)。
+- input の border は `border-b-2 border-border-strong`、focus で `border-b-2 border-primary`。focus 時に弱い
+  `shadow-md`。invalid (`aria-invalid` / `:focus:invalid`) で border を `danger` に。
 
 **意図**: sample のフォームの「触ったら反応する」手触り。banking 系フォームの定番でもある。
 
@@ -466,14 +536,24 @@ Orbit (業務 UI) には過大なので **70% 圧縮** が原則。
 | Then/Now 分割 | 期間を 2 等分。例: 8w → Then=前半 4w、Now=後半 4w |
 | スライス上限 | **上位 4 モード + その他** に集約 (Now 期間の比率上位)。「その他」は `ink-muted` 単色 |
 | スライス色 | mode 別に `chartTheme.modeColors` を継承、ただし Stage 3 では primary / accent / ink-muted / friction / それ以外は彩度低めのバリエーション |
-| デルタ表 | 各行に `mode label` + `Then% → Now%` + `▲/▼ Npp`。最大変化のモード行だけ ▲ を `accent` 色、それ以外は `ink-muted` |
-| ナラティブ文 | **ルールベース生成**: Now 期間の上位 N モードのうち、絶対値で **変化が最大の 1〜2 モード**を文章化。閾値 5pp 未満なら「まだ変化が見えていない」文を出す |
+| デルタ表 | 各行に `mode label` + `Then% → Now%` + `▲/▼ Npp`。**▲▼ は中立色 (`ink-muted`) を既定**とし、accent は「改善方向の有意変化」glyph の fill にのみ使う (§3.3, accent は非テキスト)。「最大変化だから accent」ではない — 退行 (例: debug +18pp) を緑で祝わない |
+| ナラティブ文 | **ルールベース生成 + 標本量ゲート**: まず各サイド (Then/Now) の総時間・週数が下限未満なら変化量に関わらず「判断に十分なデータがありません」を出す。下限を満たした上で、絶対値で変化が最大の 1〜2 モードを文章化。閾値 5pp 未満なら「まだ変化が見えていない」文 |
 | 連続時系列 (旧) | `<details>` で「週次推移を見る」折りたたみ。中身は現 `AreaChart` (`stackOffset="expand"`) を維持、トークンだけ Stage 3 化 |
 | Tooltip / Axis | `ink-muted`、数値 `font-mono` (§4.3) |
 
 **ナラティブ生成ルール** (擬似コード):
 
 ```
+// 標本量ゲート (レビュー反映): 各サイドが十分なデータを持つか先に検査。
+// ※ ThenVsNowPage の MIN_WEEKS は「データのある週数」を数える点に注意 (カレンダー週ではない)。
+//    4w 分割で片側が実データ 1 週しかない場合の偽の物語を防ぐ。
+const MIN_WEEKS_PER_SIDE = 2;
+const MIN_MINUTES_PER_SIDE = SOME_FLOOR; // 例: 各サイド合計が下限未満なら判断不能
+if (then.weeksWithData < MIN_WEEKS_PER_SIDE || now.weeksWithData < MIN_WEEKS_PER_SIDE
+    || then.totalMin < MIN_MINUTES_PER_SIDE || now.totalMin < MIN_MINUTES_PER_SIDE) {
+  return "この期間は判断に十分なデータがありません。";
+}
+
 const sorted = modes.sort((a, b) => Math.abs(deltaPp(b)) - Math.abs(deltaPp(a)));
 const top1 = sorted[0];
 const top2 = sorted[1];
@@ -486,6 +566,10 @@ if (Math.abs(deltaPp(top2)) >= 5) {
 }
 return `この ${window}w で ${label(top1)} が ${sign(top1)}${abs(top1)}pp 変化しました。`;
 ```
+
+> **accent glyph 規約**: デルタ表の ▲ を accent (緑) で出すのは `deltaPp > 0` **かつ** それが「改善」と解釈
+> できるモード (例: implement 増) のときのみ。符号や「改善向き」の定義は実装時に ADR / DESIGN_CONCEPT と
+> 整合させる。`Math.abs` ソートは「文章化する対象の選定」にのみ使い、緑色付与の判定には使わない。
 
 **StatTile (Then→Now 比率 2 枚) は廃止** — デルタ表に統合される。
 
@@ -551,6 +635,13 @@ return `この ${window}w で ${label(top1)} が ${sign(top1)}${abs(top1)}pp 変
 
 ### 7.12 Tasks ページ — 構造再設計
 
+> **スコープ注記 (レビュー反映, 最重要)**: 本節は**挙動変更を含む**ため Stage 3 の純ビジュアル PR (PR A)
+> には入れず、**別 feat PR (PR B, §10.3)** として ADR 005 整合・a11y 仕様・ユニットテスト込みで出荷する。
+> PR A では `TaskForm` / `TaskList` の**現 2-select 構造のまま新トークンを当てるだけ**にする (問題 #1
+> の生 Tailwind 撲滅は PR A で完了 / 問題 #2-9 の構造改善は PR B)。
+> レビュー結論: この再設計は方向は正しいが、**現状の「酷い版」より良くなる確証はまだなく**、select 地獄を
+> 「暗黙の状態遷移グラフ + メニュー階層」地獄に付け替えるリスクがある。下記の修正を満たして初めて改善になる。
+
 **Stage 2 までの問題** (`TasksPage.tsx` / `TaskForm.tsx` / `TaskList.tsx` 実コードから):
 
 | # | 問題 | 場所 |
@@ -595,12 +686,24 @@ return `この ${window}w で ${label(top1)} が ${sign(top1)}${abs(top1)}pp 変
 | `archived` | (一覧非表示、フィルタで表示) | — |
 
 **規約**: 状態の進行 (`open → in_progress → done`) はバッジ click 1 回。逆戻り・blocked 入り・archive
-入りは `⋯` メニュー。色は §3.3 用途規約と連続 (done = accent は「成長 / 完了」の用途内)。
+入りは `⋯` メニュー。done の ✓ fill は accent (非テキスト, §3.3)、ラベル文字は ink。
+
+> **PR B 必須要件 (レビュー反映)**:
+> - **ADR 005 整合**: バッジ昇格は `started_at` / `completed_at` (types.ts) という副作用フィールドを動かす
+>   ドメイン操作。`<select>` で値を入れるより意味的に重い。ワンクリック昇格が各フィールドをどう書くかを
+>   ADR 005 の状態機械に照らして定義してから実装する。
+> - **a11y**: バッジは glyph (●◐✓) だけの操作要素なので `aria-label`「クリックで in_progress にする」等を必須。
+> - **逆走の保護一貫性**: `done → open` は `completed_at` を破棄する破壊的操作。blocked 解除だけ保護して
+>   done 取消を無防備にするのは非一貫。保護基準を「破壊的/不可逆な遷移か」で統一し、blocked の解除先
+>   (→ open 固定 等) を明記する。
 
 #### 7.12.3 編集 — 行頭バッジ + 「⋯」メニュー
 
-- **inline**: ステータスバッジクリックのみ
-- **「⋯」メニュー** (`<details>` ベース、Stage 2 のキーボード対応継承):
+- **inline**: ステータスバッジクリックのみ。category 変更も頻度が低くないため、メニュー奥に押し込まず
+  inline の category バッジ click でも変更できる導線を検討 (現 select より深くしない)。
+- **「⋯」メニュー** (レビュー反映: `<details>` は role=menu も矢印キーも持たず APG Menu Button 契約を
+  満たさない & Stage 2 にこのメニューは無いので「継承」ではない。**`aria-haspopup="menu"` の正式な
+  Menu Button か `<dialog>` アクションシートで実装**):
   - カテゴリ変更 (Radio 群、§7.7 新 Radio)
   - 説明編集 (新 Input、§7.8)
   - blocked にする / archive する
@@ -620,6 +723,14 @@ return `この ${window}w で ${label(top1)} が ${sign(top1)}${abs(top1)}pp 変
 - ステータスフィルタ: `all / open / in_progress / blocked / done / archived` の 6 タブ (CategoryTabs パターン §7.9)
 - カテゴリフィルタ: `<select>` 1 個 (バッジクリックでフィルタ追加するパターンは将来検討、今回は select)
 - フィルタ状態は URL クエリで保持 (`?status=open&category=bug`)
+
+> **事故 UX 対策 (レビュー反映)**: デフォルトを `status=open` にすると、open 行をワンクリック昇格した瞬間に
+> フィルタから脱落し「操作した行が消える」。`useUpdateTask` が `TASKS_KEY` 全体を invalidate する (hooks.ts)
+> ため再フェッチで即座に消える。対策のいずれか: **(a) デフォルトフィルタを `all` か `open+in_progress`**、
+> または **(b) 昇格直後は楽観更新で当該行をリストに残す** (フィルタ外でも一定時間 / 次操作まで表示)。
+> 「全体感がバッジで一目」という設計目標と衝突させない。
+> なお URL クエリフィルタ・削除確認 `<dialog>`・インライン作成のフォーカス管理はいずれも**色置換ではなく
+> 挙動 = PR B スコープ**。
 
 #### 7.12.6 空状態
 
@@ -669,11 +780,13 @@ Stage 2 の規約を **新パレットで再検証** する。
 | `ink-muted` / `canvas` | 4.5:1 | 同上 |
 | `ink-muted` / `surface` | 4.5:1 | 同上 |
 | `white` / `primary` | 4.5:1 | CTA |
-| `white` / `accent` | 4.5:1 | バッジ・CTA |
-| `border` / `canvas` | 3:1 | UI 区切り (1.4.11) |
+| `accent` / `white` (グラフィック) | **3:1** (1.4.11, 非テキスト) | Donut スライス・✓ glyph。**4.5:1 テキスト基準は適用しない** (accent は文字に使わないため, §3.1/§3.3) |
+| `border-strong` / `canvas` | 3:1 | 機能的 UI 境界・入力枠 (1.4.11) |
+| `border` / `canvas` | (基準なし) | **純装飾罫のみ**。1.12:1 で 3:1 未達だが、情報を持たない罫線は 1.4.11 の対象外 (機能的境界は border-strong を使う, §3.1) |
 | focus-visible outline / 背景 | 3:1 | 全インタラクティブ要素で確認 |
 
-未達なら token 値を調整 (border-strong の用意はそのための予備車線)。
+**WCAG 実測は実装着手前ゲート (§10.2 Task A2) で行う**。accent を文字に流用した場合のみ未達になるが、§3.3 で
+文字用途を禁止したため設計上は発生しない。未達が出たら token 値を調整 (border-strong / ink-muted の値が予備車線)。
 
 ### 9.2 モーション
 
@@ -689,34 +802,82 @@ Stage 2 の規約を **新パレットで再検証** する。
 
 ---
 
-## 10. 実装計画 (1 PR / 全置換)
+## 10. 実装計画 (スタック PR 戦略 / HEAD = `feat/rebrand-front-design` を統合ベース)
 
-範囲 (Stage 3 全タスクは `feat/rebrand-front-design` の 1 PR にまとめる):
+> **改稿 (2026-06-21, レビュー反映)**: 旧 §10 は「1 PR で全置換」だったが、レビュー2本
+> (多観点 grill / sample 移植忠実度) の結論として、**「機能追加ゼロの純ビジュアル刷新」と
+> 「挙動変更を伴う再設計」を同一 PR に混ぜない**方針へ変更する。§7.12 (Tasks) と §7.9
+> (ThenVsNow) は色置換ではなく**新しい挙動の発明**であり、純ビジュアル PR の「回帰範囲 = 視覚層
+> のみ」という安全前提 (§1.4) を壊すため、物理的に分離する。
+
+### 10.1 ブランチ戦略 — HEAD へのスタック PR
+
+`feat/rebrand-front-design` (= 本ブリーフを保持する現 HEAD) を**統合ベース**とし、各サブブランチが
+**HEAD 向けに PR を出す**。最終的に統合ベースを `main` へ 1 本のマージ PR でまとめる。
+
+```
+main
+ └─ feat/rebrand-front-design        ← HEAD / 統合ベース (このブリーフ)
+     ├─ PR A: feat/rebrand-tokens       → HEAD  (純ビジュアル: トークン+プリミティブ+全画面)
+     ├─ PR B: feat/tasks-redesign       → PR A 上にスタック  (挙動変更: §7.12, ADR 005 整合)
+     └─ PR C: feat/thenvsnow-redesign   → PR A 上にスタック  (挙動変更: §7.9)
+```
+
+- **PR A を最初に HEAD へマージ**してから B/C を積む。これで「旧色と新色の混在 (中間状態) を作らない」
+  という旧 §12 の要件を、1 PR でなくマージ順序で満たす。
+- B / C は PR A の新 `Button`/`Input`/`Badge` に依存するため PR A の上にスタックする (依存がなければ HEAD 直)。
+- B と C は互いに独立 → 並行レビュー可能。どちらも単独で revert/保留できる。
+- **B / C は今回の rebrand スコープでは必須でない**。PR A 単独でも「ライト Ledger 化」は完結する
+  (Tasks / ThenVsNow は現構造に新トークンを当てた状態で出荷可能)。B / C は別 feat として後追いでよい。
+
+### 10.2 PR A — 純ビジュアル刷新 (機能追加ゼロ / 回帰範囲 = 視覚層のみ)
 
 | Task | 内容 | 見積 |
 |---|---|---|
-| 0 | 旧トークン参照棚卸 (`rg`) | 0.5h |
-| 1 | `globals.css` + `tailwind.config.ts` 刷新 | 1h |
-| 2 | UI プリミティブ書き換え (Button/Card/Badge/Divider/ErrorText/KeyCap) + 新規 (Radio/Input) | 3h |
-| 3 | Orbit components (CategoryTabs/FrictionItem/ModeBar/StatTile/StatusHero) 更新 | 1.5h |
-| 4 | `App.tsx` + 3 ページ更新 | 2h |
-| 5 | `features/*` の旧トークン参照置換 + フォーム系を新 Input/Radio へ移行 | 2h |
-| 6 | Recharts 配色 (ThenVsNowChart) | 1h |
-| 7 | WCAG 実測 + token 微調整 | 1h |
-| 8 | ビルド (`tsc --noEmit`、`pnpm build`) + 3 ページ手動巡回 | 0.5h |
+| A0 | 棚卸: 旧 `--color-*` **に加え生 Tailwind パレットクラス** (`bg-neutral-*` / `bg-blue-*` / `text-red-*` / `divide-neutral-*`) も `rg` 全件 (TaskForm/TaskList が該当, §7.12 問題#1) | 0.5h |
+| A1 | `globals.css` + `tailwind.config.ts` 刷新。**Inter `@import` に weight 300 追加** (`wght@300;400;500;600`, §4.2)。**keyframe は px 距離を明示**固定 (§6.1) | 1.5h |
+| A2 | **WCAG 実測を着手前ゲートに前倒し** (旧 Task7)。accent / border の確定はトークン定義時に行う (§9.1) | 1h |
+| A3 | UI プリミティブ書換 (Button/Card/Badge/Divider/ErrorText/KeyCap) + 新規 (Radio/Input)。**Radio/Input は §7.7/§7.8 の修正マークアップで実装** | 3h |
+| A4 | Orbit components (CategoryTabs/FrictionItem/ModeBar/StatTile/StatusHero) 更新 | 1.5h |
+| A5 | `App.tsx` + 3 ページ + Favicon 一式 (§7.11) | 2.5h |
+| A6 | `features/*` の旧トークン置換 + フォーム系を新 Input/Radio へ移行 | 2h |
+| A7 | ThenVsNowChart / Tasks は**現構造のまま配色のみ Stage 3 化** (TaskForm/TaskList の 2-select 構造維持、ThenVsNow は現 AreaChart のまま) | 1h |
+| A8 | ビルド (`tsc --noEmit` / `pnpm build`) グリーン + 3 ページ手動巡回 + reduced-motion 確認 | 0.5h |
 
-コミット分割 (Conventional Commits):
+コミット分割 (Conventional Commits, PR A 内):
 
 ```
-refactor(theme): replace dark tokens with light "Ledger" palette
+refactor(theme): replace dark tokens with light "Ledger" palette (+ Inter 300)
 refactor(ui): rebuild Button/Card/Badge primitives with sample-style motion
-feat(ui): add Radio and Input primitives (sample-style)
+feat(ui): add Radio and Input primitives (sample-style, sibling-peer markup)
 refactor(orbit): apply new tokens to orbit components
-refactor(pages): apply new tokens to App and pages
+refactor(pages): apply new tokens to App, pages, favicon
 refactor(features): migrate feature components to new primitives
-refactor(chart): apply Ledger palette to ThenVsNowChart
+refactor(chart,tasks): apply Ledger palette only (no structural change)
 chore(a11y): verify WCAG AA on new palette and tune tokens
 ```
+
+### 10.3 PR B — Tasks 再設計 (§7.12 / 別 feat, 挙動変更)
+
+- **ADR 005 状態機械と整合**: バッジ昇格が `started_at` / `completed_at` (types.ts) の副作用をどう扱うか
+  を ADR 005 に照らして定義してから実装する (§7.12.2 注記)。
+- a11y: ⋯メニューは APG Menu Button 契約 (role=menu / 矢印キー) を満たす実装 or `<dialog>` アクションシート、
+  ステータスバッジに `aria-label`。
+- デフォルトフィルタ + 楽観更新の事故 UX 対策 (§7.12.5 注記)。
+- testing.md 準拠でユニットテスト (状態遷移グラフ / URL 同期 / 空文字バリデーション)。
+- 見積: 実装 4h + テスト 2h。
+
+### 10.4 PR C — ThenVsNow 再設計 (§7.9 / 別 feat, 挙動変更)
+
+- Donut 2 枚 + デルタ表 + 期間タブ + **標本量ゲート付きナラティブ生成** (§7.9 修正版)。
+- testing.md 準拠でユニットテスト (ナラティブ生成ルール / 集計 / 標本量ゲート)。
+- 見積: 実装 3h + テスト 1.5h。
+
+### 10.5 各 PR 共通ゲート
+
+- 自 PR 単独で `tsc --noEmit` / `pnpm build` がグリーン (スタックでも各層で緑を保つ)。
+- 新規ロジックは testing.md (80% / TDD) に従いユニットテストを同梱。
+- PR 本文に Before/After スクショ必須。PR A は WCAG 実測値も貼付 (§14)。
 
 ---
 
@@ -730,8 +891,13 @@ chore(a11y): verify WCAG AA on new palette and tune tokens
 | 1 PR が巨大化してレビュー困難 | High | 上記のコミット分割、PR に Before/After スクショ必須 |
 | `::after` グローと既存 `dialog::backdrop` の z-index / overflow 衝突 | Low | 親に `relative isolate`、`after:absolute after:-z-10` |
 | Stage 2 の「装飾削減」規律が緩むという誤読 | Med | 本ドキュメントの §1.3 と §2 で「装飾量は増やさない、質を上げる」を明文化 |
-| sample 由来の `rem` (62.5% 前提) と Tailwind の `px` ベースのズレ | Med | sample の `rem` 値は Tailwind スケールに翻訳 (`1.5rem` → `py-3` 等) |
+| sample 由来の `rem` (62.5% 前提) と Tailwind の `px` ベースのズレ | Med | sample の `rem` 値は §5.3 の**マッピング表を唯一の正**として翻訳 (btn padding = `py-2.5`。旧文の `py-3` は誤記、修正済)。keyframe 距離も px 明示 (§6.1) |
 | 業務時間中のライト基調が夜間使用で眩しい | Low | 本リブランドではテーマ切替を提供しない (将来 Observatory を dark mode として復活する余地は token 設計で残す) |
+| `accent` を文字色に流用し WCAG 4.5:1 を割る | High | §3.1/§3.3 で accent を非テキスト専用に確定。Button に accent variant を作らない (§7.1) ことで型レベルで封じる。実測は PR A 着手前ゲート (§10.2 A2) |
+| `peer-checked` / floating label のマークアップ誤りで Radio/Input が無反応 | High | §7.7/§7.8 の兄弟フラット構造で実装。実装時に checked/placeholder-shown の双方を手動確認 |
+| Inter weight 300 未ロードで h1 字重が出ない | Med | §10.2 A1 で `@import` に 300 追加を必須化 (§4.2) |
+| 「洗練されたか」を判定するゲートが無く凡庸に着地 | Med | §14 に「Orbit 識別性 / 凡庸でないか」の主観ゲートを追加 |
+| PR B/C の挙動変更が ADR 005 状態機械と齟齬 | High | §10.3/§7.12.2 で ADR 005 整合を実装前提に明記、ユニットテストで遷移を固定 |
 
 ---
 
@@ -741,7 +907,7 @@ chore(a11y): verify WCAG AA on new palette and tune tokens
 |---|---|---|
 | 2026-06-21 | ライト基調へ全面刷新 (ダーク維持しない) | 業務道具としての信頼感を優先、テーマ切替のメンテ負債を回避 |
 | 2026-06-21 | アニメは純 CSS (Framer Motion 不採用) | sample 流儀の手触りを直接再現、bundle 増加ゼロ |
-| 2026-06-21 | 1 PR で全置換 (Phase 分割しない) | 中間状態 (旧色と新色の混在) を作らない |
+| 2026-06-21 | ~~1 PR で全置換 (Phase 分割しない)~~ **→ 撤回 (下記 改 行)** | 中間状態回避が動機だったが、純ビジュアルと挙動変更の同梱リスクが上回ったため §10.1 のスタック PR へ |
 | 2026-06-21 | Observatory コンセプトは Stage 2 として保存、Stage 3 は Ledger | コンセプト自体は否定せず視座を切替えた扱い |
 | 2026-06-21 | テーマ切替トグルは今回スコープ外 | 設計余地は token 構造で確保 |
 | 2026-06-21 | パレットは A 案 (`primary #0d3b66` / `accent #00a368` / `canvas #f5f7fa`) で確定 | 3 案比較を省略し、Task 7 の WCAG 実測で微調整する方針 |
@@ -768,34 +934,61 @@ chore(a11y): verify WCAG AA on new palette and tune tokens
 | 2026-06-21 | スライス上限 = 上位 4 モード + 「その他」 | Cleveland-McGill の角度限界 (5 未満) と整合、Tooltip で「その他」内訳開示 |
 | 2026-06-21 | デルタ最大の 1〜2 モードをルールベースで文章化、5pp 未満は「変化見えず」文 | 「何が変わった?」の読み取りをユーザーに丸投げしない、LLM 不要で実装軽い |
 | 2026-06-21 | StatTile (Then→Now 比率 2 枚) は廃止、デルタ表に統合 | 同じ情報を 2 箇所に出さない、視覚優先順位整理 |
+| 2026-06-21 (改) | **「1 PR 全置換」を撤回 → HEAD 統合ベースのスタック PR (A=純ビジュアル / B=Tasks / C=ThenVsNow)** | grill 指摘: 純ビジュアルと挙動変更の同梱が「回帰=視覚層のみ」前提 (§1.4) を破壊、revert 単位が分離できない。中間状態回避はマージ順序 (A 先行) で担保 (§10.1) |
+| 2026-06-21 (改) | **accent は非テキスト専用に確定、Button に accent variant を作らない** | WCAG 実測で accent 白文字 = 3.26:1 (4.5:1 不合格)。文字に使えないため非テキスト (Donut/✓/glyph) へ用途確定し、押せない CTA variant を型から除外 (§3.1/§3.3/§7.1) |
+| 2026-06-21 (改) | **WCAG 実測を実装後 Task7 → 着手前ゲート (A2) に前倒し** | accent/border の値確定が世界観の再決定になり得るため、手戻り最小の位置へ (§9.1/§10.2) |
+| 2026-06-21 (改) | **border 2 階層の運用明確化: 機能的境界は border-strong、`border` は純装飾罫のみ** | `border` (#e3e8ef) は canvas 上 1.12:1 で 1.4.11 の 3:1 未達。情報を持つ境界に使うと違反 (§3.1/§9.1) |
+| 2026-06-21 (改) | **CTA への moveInBottom delay (750ms) を撤廃、delay は非操作要素のみ** | sample `_button.scss:67-70` の観光 LP 初回演出を業務道具の入力導線に移植すると毎日の待ち時間化、§1.3 の 200-500ms 規律にも違反 (§6.1/§6.3/§7.1) |
+| 2026-06-21 (改) | **keyframe は px 距離を明示固定** (moveInBottom `translateY(20px)` 等) | sample は root 62.5% (1rem=10px)、Orbit は 1rem=16px。rem 直写で距離が 1.6 倍になり手触りが変わる (§6.1/§5.3) |
+| 2026-06-21 (改) | **Inter `@import` を `wght@300;400;500;600` に拡張** | `_typography.scss` は 400/700 で 300 は sample 由来でない。h1=300 は Orbit 独自判断、import 未拡張だと fallback 400 に落ちる (§4.2) |
+| 2026-06-21 (改) | **Radio/Input は兄弟フラット構造で実装** (`<label>` ラップ不可) | Tailwind `peer-checked`/`peer-placeholder-shown` は兄弟セレクタ。視覚要素を label 子孫に置くと届かず無反応 (§7.7/§7.8) |
+| 2026-06-21 (改) | **ThenVsNow ナラティブに標本量ゲート追加 + accent は改善方向のみ** | 片側 1 週のノイズで「+18pp 改善」断言や、退行 (debug 増) を緑で祝う事故を防ぐ (§7.9) |
+| 2026-06-21 (改) | **§5.3「70% 圧縮が原則」を撤回、マッピング表が唯一の正** | 実比率は 50-80% でバラバラ。単一比率での機械的導出は誤り (§5.3) |
+| 2026-06-21 (改) | **挙動変更 (PR B/C) は testing.md 準拠でユニットテスト同梱** | 状態遷移/URL同期/ナラティブ生成は手動巡回でなくテストで守る (§10.3-10.5/§14) |
+| 2026-06-21 (改) | **スタイルは3層 (Tailwind / globals.css 素 CSS / CSS Modules opt-in)。全面 SCSS 化は不採用** | Tailwind 表現力不足は誤診 (書けない物は元々 globals.css 行き)。per-component CSS はトークン規律喪失・二重体系・bundle 増を招く。Tier 3 は PR A で実証してから (§7.0) |
 
 ---
 
 ## 13. Open Questions
 
-**全クローズ済み (2026-06-21)**。実装着手前に固めるべき設計判断は Decision Log §12 にすべて記録した。
-新たな疑問が発生した場合は §12 に追記する形で運用する。
-
-- [x] ~~パレット値の最終確定~~ → A 案 (`#0d3b66 / #00a368 / #f5f7fa`)
-- [x] ~~StatusHero 状態色~~ → working=primary / off=ink-muted / pause=friction
-- [x] ~~`dialog::backdrop`~~ → ink 32% + blur 8px (フォールバック 48% blur なし)
-- [x] ~~Spacing scale~~ → 中庸 (py-12 / space-y-12 / p-7 / gap-4)
-- [x] ~~Typography weight~~ → 300〜600 拡張
-- [x] ~~モーション射程~~ → 初期描画 1 回のみ
-- [x] ~~Recharts アニメ~~ → `isAnimationActive={false}`
-- [x] ~~数値等幅規約~~ → JetBrains Mono 全底
-- [x] ~~長文可読性~~ → line-height 1.65 / max-w-prose / 60-75ch
+**全クローズ済み (2026-06-21)**。設計判断はすべて Decision Log §12 に記録。新たな疑問は §12 へ追記運用。
+実装時に詰める運用パラメータは 1 点のみ: ThenVsNow 標本量ゲートの下限値 (`MIN_WEEKS_PER_SIDE` /
+`MIN_MINUTES_PER_SIDE`) を PR C 実装時に ADR 005 と整合させて確定 (§7.9)。
 
 ---
 
 ## 14. Acceptance
 
+### 14.1 PR A — 純ビジュアル刷新
+
 - [ ] `globals.css` / `tailwind.config.ts` が新トークン体系に完全置換 (旧名残ゼロ)
-- [ ] 旧トークン参照のリポジトリ内残ヒット 0 件 (`rg` で確認)
+- [ ] 旧トークン参照 **+ 生 Tailwind パレットクラス** (`bg-neutral-*`/`bg-blue-*`/`text-red-*`/`divide-neutral-*`) の残ヒット 0 件 (`rg`)
+- [ ] Inter `@import` に weight 300 が含まれ、h1 が実際に 300 で描画される
 - [ ] `pnpm exec tsc --noEmit` / `pnpm build` グリーン
-- [ ] 3 ページ (Today / Then vs Now / Tasks) の主要動線が視覚崩れなく動作
-- [ ] WCAG AA 主要組合せ実測値を PR に貼付
-- [ ] sample 由来アニメ (button hover lift + glow、radio reveal、input label lift、moveInBottom)
-      の再現確認
+- [ ] 3 ページ (Today / Then vs Now / Tasks) の主要動線が視覚崩れなく動作 (Tasks/ThenVsNow は現構造のまま配色のみ)
+- [ ] **WCAG AA 主要組合せ実測値を PR に貼付** (着手前ゲートで確認済の値)。accent は文字に使われていない / 機能的境界は border-strong
+- [ ] sample 由来アニメ (button hover lift + glow `scaleX1.4/scaleY1.6`、radio reveal、input label lift) の再現確認。**CTA に delay 演出が付いていない**
+- [ ] Radio / Input が checked / placeholder-shown の双方で実際に反応する (兄弟マークアップ検証)
 - [ ] `prefers-reduced-motion: reduce` でアニメが無効化されることを確認
 - [ ] Stage 2 の規律 (装飾削減、状態機械単一表示、focus-visible) が新パレットで維持
+- [ ] **主観ゲート**: 3 ページを並べて「Orbit と識別できるか / 銀行テンプレートの域を超えているか」を本人が確認
+
+### 14.2 PR B — Tasks 再設計
+
+- [ ] バッジ昇格の副作用 (`started_at`/`completed_at`) が ADR 005 状態機械と整合
+- [ ] ⋯メニューが APG Menu Button (or `<dialog>`) 契約を満たす / バッジに `aria-label`
+- [ ] デフォルトフィルタ + 昇格で「操作行が消える」事故が起きない (§7.12.5)
+- [ ] 状態遷移グラフ / URL 同期 / 空文字バリデーションのユニットテスト (testing.md 80%)
+- [ ] `tsc --noEmit` / `pnpm build` グリーン + Before/After スクショ
+
+### 14.3 PR C — ThenVsNow 再設計
+
+- [ ] 標本量ゲートが片側データ不足時に「判断に十分なデータがありません」を返す
+- [ ] accent ▲ が退行 (負の/悪化方向の変化) に付かない
+- [ ] ナラティブ生成 / 集計 / 標本量ゲートのユニットテスト (testing.md 80%)
+- [ ] `tsc --noEmit` / `pnpm build` グリーン + Before/After スクショ
+
+### 14.4 統合 (HEAD → main)
+
+- [ ] PR A → B → C の順でマージ済、各層で中間状態の色混在がない
+- [ ] `feat/rebrand-front-design` → `main` のマージ PR で全 Acceptance を最終確認
