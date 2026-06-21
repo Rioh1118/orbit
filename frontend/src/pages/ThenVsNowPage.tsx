@@ -94,20 +94,20 @@ export default function ThenVsNowPage() {
   }, [data]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10">
+    <div className="mx-auto max-w-3xl space-y-12">
       <header>
-        <h1 className="text-2xl font-semibold text-parchment">
+        <h1 className="text-3xl font-light tracking-tight text-ink">
           同じ作業、前より速く解けるようになった?
         </h1>
       </header>
 
       <CategoryTabs value={category} onChange={setCategory} />
 
-      {isLoading && <p className="text-sm text-mist">読み込み中…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">読み込み中…</p>}
       {error && <ErrorText>{(error as Error).message}</ErrorText>}
 
       {!isLoading && !error && points.length < MIN_WEEKS_FOR_SIGNAL && (
-        <p className="text-sm text-mist">
+        <p className="text-sm text-ink-muted">
           データ不足 — あと {MIN_WEEKS_FOR_SIGNAL - points.length}{" "}
           週分で推移を表示します
         </p>
@@ -122,7 +122,7 @@ export default function ThenVsNowPage() {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <StatTile
               label="コード探索の比率"
               value={shareDelta("code_explore")}
@@ -138,7 +138,7 @@ export default function ThenVsNowPage() {
           <section>
             <Divider label="完了時間 / タスク (分)" />
             {completionSeries.length < MIN_WEEKS_FOR_SIGNAL ? (
-              <p className="mt-4 text-sm text-mist">
+              <p className="mt-4 text-sm text-ink-muted">
                 データ不足 — 完了タスクが足りません
               </p>
             ) : (
@@ -158,7 +158,7 @@ export default function ThenVsNowPage() {
                     <Line
                       type="monotone"
                       dataKey="min"
-                      stroke="var(--color-growth)"
+                      stroke="#00a368"
                       strokeWidth={2}
                       dot={{ r: 2 }}
                     />
@@ -170,10 +170,10 @@ export default function ThenVsNowPage() {
 
           <section>
             <Divider label="詰まり / この期間" />
-            <p className="mt-4 text-sm text-parchment">
+            <p className="mt-4 text-sm text-ink">
               {frictionSummary.total} 件
               {frictionSummary.detail && (
-                <span className="ml-2 text-xs text-mist">
+                <span className="ml-2 text-xs text-ink-muted">
                   {frictionSummary.detail}
                 </span>
               )}
