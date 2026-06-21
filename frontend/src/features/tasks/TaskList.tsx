@@ -82,7 +82,7 @@ export function TaskList() {
       {visible.length === 0 ? (
         <EmptyState hasAnyTasks={allTasks.length > 0} onClearFilter={clear} />
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+        <ul className="divide-y divide-border rounded-lg border border-border bg-surface [&>li:first-child]:rounded-t-lg [&>li:last-child]:rounded-b-lg">
           {visible.map((t) => (
             <TaskRow
               key={t.id}
