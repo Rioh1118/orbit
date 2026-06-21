@@ -114,10 +114,11 @@ func (s *TaskService) Update(ctx context.Context, in UpdateInput) (*task.Task, e
 		if !in.Status.Valid() {
 			return nil, task.ErrInvalidStatus
 		}
-		if *in.Status == task.StatusDone && existing.CompletedAt == nil {
-			now := time.Now().UTC()
-			existing.CompletedAt = &now
-		}
+		// Lifecycle stamps follow the ADR-005 state machine (see task.NextLifecycle):
+		// start stamps started_at, completion stamps completed_at, reopening clears it.
+		existing.StartedAt, existing.CompletedAt = task.NextLifecycle(
+			*in.Status, existing.StartedAt, existing.CompletedAt, time.Now().UTC(),
+		)
 		existing.Status = *in.Status
 	}
 	if err := existing.Validate(); err != nil {

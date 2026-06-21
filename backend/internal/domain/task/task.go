@@ -83,3 +83,32 @@ func (t *Task) Validate() error {
 	}
 	return nil
 }
+
+// NextLifecycle returns the started_at / completed_at a task should carry after a
+// transition to newStatus, per the ADR-005 task state machine. It is pure: the
+// caller supplies `now`, so the same inputs always yield the same result.
+//
+// Invariants:
+//   - started_at is stamped on the first entry into in_progress and is sticky
+//     thereafter (it records "work began at least once").
+//   - completed_at is stamped on entering done, and cleared when the task returns
+//     to an active backlog state (open / in_progress) — so reopening a finished
+//     task discards its completion stamp (a deliberately destructive, menu-gated
+//     UI action, brief §7.12.2). blocked / archived preserve both stamps, so
+//     filing a finished task keeps its completion record.
+func NextLifecycle(newStatus Status, started, completed *time.Time, now time.Time) (*time.Time, *time.Time) {
+	switch newStatus {
+	case StatusInProgress:
+		if started == nil {
+			started = &now
+		}
+		completed = nil
+	case StatusOpen:
+		completed = nil
+	case StatusDone:
+		if completed == nil {
+			completed = &now
+		}
+	}
+	return started, completed
+}
