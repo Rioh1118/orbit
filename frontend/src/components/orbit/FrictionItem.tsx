@@ -11,6 +11,7 @@ export function FrictionItem({ note, patternTag, resolved = false }: FrictionIte
     <div className="flex items-start gap-3 border-b border-border py-2.5 last:border-b-0">
       <span
         className={`mt-1.5 h-1.5 w-1.5 rounded-full ${resolved ? "bg-accent" : "bg-friction"}`}
+        role="img"
         aria-label={resolved ? "resolved" : "open"}
       />
       <div className="min-w-0 flex-1">

@@ -38,7 +38,7 @@ export function FrictionLog({ limit = 20, resolved }: Props) {
                 onClick={() =>
                   update.mutate({ id: f.id, input: { resolved: true } })
                 }
-                className="inline-flex h-6 items-center justify-center rounded px-2 text-xs text-ink-muted transition-colors hover:text-accent"
+                className="inline-flex h-6 items-center justify-center rounded px-2 text-xs text-ink-muted transition-colors hover:text-primary"
                 aria-label="解決にする"
               >
                 解決

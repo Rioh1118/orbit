@@ -38,7 +38,7 @@ export function Radio({
         checked={checked}
         disabled={disabled}
         onChange={() => onChange(value)}
-        className="h-5 w-5 shrink-0 appearance-none rounded-full border-2 border-border-strong bg-surface bg-clip-content p-[3px] outline-none transition-colors duration-200 checked:border-primary checked:bg-primary"
+        className="h-5 w-5 shrink-0 appearance-none rounded-full border-2 border-border-strong bg-surface bg-clip-content p-[3px] transition-colors duration-200 checked:border-primary checked:bg-primary"
       />
       {label}
     </label>
